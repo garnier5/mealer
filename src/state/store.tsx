@@ -9,6 +9,7 @@ import {
   fitsSlot,
   mealTitle,
   norm,
+  options,
   randomPick,
   recipeTitle,
   sanitizePicks,
@@ -246,10 +247,25 @@ function useStoreValue() {
     updateRecipe: (edited: Recipe) => {
       const r = sanitizeRecipe(edited);
       if (!r) return;
-      setData((d) => ({
-        ...d,
-        extra: d.extra.some((x) => x.id === r.id) ? d.extra.map((x) => (x.id === r.id ? r : x)) : d.extra.concat(r),
-      }));
+      setData((d) => {
+        const old = d.extra.find((x) => x.id === r.id);
+        // Planned meals remember their variants by ingredient position: follow each chosen
+        // variant by name, so reordering or editing the ingredients keeps "rice" on rice.
+        let picks = d.picks;
+        if (old) {
+          d.plan.forEach((id, slot) => {
+            if (id !== r.id || !d.picks[slot]) return;
+            const chosen = new Map(old.ing.map((i, j) => [i[0], chosenIngredients(old, d.picks[slot])[j]]));
+            const pick = cleanPick(r.ing.map((i) => Math.max(0, options(i).indexOf(chosen.get(i[0]) ?? i[0]))));
+            picks = pick.length ? { ...picks, [slot]: pick } : withoutPick(picks, slot);
+          });
+        }
+        return {
+          ...d,
+          picks,
+          extra: old ? d.extra.map((x) => (x.id === r.id ? r : x)) : d.extra.concat(r),
+        };
+      });
     },
 
     addTag: (value: string) => {

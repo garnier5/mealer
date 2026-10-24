@@ -130,6 +130,7 @@ export function IconButton({
   size = 40,
   round,
   bordered,
+  disabled,
 }: {
   icon: IconName;
   onClick: () => void;
@@ -139,12 +140,14 @@ export function IconButton({
   size?: number;
   round?: boolean;
   bordered?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       className="icon-btn"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
       style={{

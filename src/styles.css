@@ -282,6 +282,10 @@ button:disabled {
   transition: opacity 0.12s;
 }
 
+.icon-btn:disabled {
+  opacity: 0.25;
+}
+
 .progress {
   overflow: hidden;
   background: var(--surface2);

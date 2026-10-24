@@ -43,6 +43,15 @@ export function AddRecipeSheet({ id }: { id?: string }) {
     if (v && variantFor !== null) setIngs((l) => l.map((g, k) => (k === variantFor ? g.concat(v) : g)));
     setVariantFor(null);
   };
+  /** Swaps ingredient `j` with its neighbour (`by` = -1 up, 1 down); a recipe without a title is named in this order. */
+  const moveIng = (j: number, by: -1 | 1) => {
+    setIngs((l) => {
+      const next = l.slice();
+      [next[j], next[j + by]] = [next[j + by], next[j]];
+      return next;
+    });
+    setVariantFor(null);
+  };
   const removeVariant = (j: number, k: number) => setIngs((l) => l.map((g, x) => (x === j ? g.filter((_, y) => y !== k) : g)));
 
   const save = () => {
@@ -111,7 +120,13 @@ export function AddRecipeSheet({ id }: { id?: string }) {
                       or…
                     </button>
                   )}
-                  <IconButton icon="x" label={'Remove ' + g[0]} onClick={() => removeIng(j)} />
+                  {ings.length > 1 && (
+                    <div className="row">
+                      <IconButton icon="up" label={'Move ' + g[0] + ' up'} onClick={() => moveIng(j, -1)} size={32} disabled={j === 0} />
+                      <IconButton icon="down" label={'Move ' + g[0] + ' down'} onClick={() => moveIng(j, 1)} size={32} disabled={j === ings.length - 1} />
+                    </div>
+                  )}
+                  <IconButton icon="x" label={'Remove ' + g[0]} onClick={() => removeIng(j)} size={32} />
                 </div>
                 {g.length > 1 && (
                   <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
