@@ -25,6 +25,18 @@ export function ImportSheet() {
     }
   };
 
+  // The long-press menu is easy to miss inside a scrolling sheet: read the clipboard directly
+  // (iOS asks with its own small "Paste" bubble). Refused or unsupported: say how to do it by hand.
+  const paste = async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (!clip.trim()) toast('The clipboard is empty');
+      else setText(clip);
+    } catch {
+      toast('Long-press in the box, then Paste');
+    }
+  };
+
   const doImport = () => {
     if (!res?.ok) return;
     addRecipes(res.recipes);
@@ -48,7 +60,10 @@ export function ImportSheet() {
         description, meal (lunch, dinner or both) and icon (plate, bowl, tart, salad, meat, fish, eggs, toast). Write an ingredient as a list to give it
         variants: ["pasta", "rice"].
       </p>
-      <Button label="Copy example" icon="copy" variant="outline" height={42} onClick={copyExample} style={{ alignSelf: 'flex-start' }} />
+      <div className="row" style={{ gap: 8 }}>
+        <Button label="Paste" icon="paste" variant="tint" height={42} onClick={paste} style={{ flex: 1 }} />
+        <Button label="Copy example" icon="copy" variant="outline" height={42} onClick={copyExample} style={{ flex: 1 }} />
+      </div>
       <TextArea
         className="code"
         value={text}

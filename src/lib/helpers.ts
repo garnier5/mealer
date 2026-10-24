@@ -226,7 +226,12 @@ export function parseImport(text: string): ImportResult {
   try {
     data = JSON.parse(text);
   } catch {
-    return { ok: false, msg: 'Invalid JSON — check the syntax' };
+    try {
+      // Notes, Messages and the iOS keyboard turn quotes into curly ones, which JSON doesn't accept.
+      data = JSON.parse(text.replace(/[“”„‟″]/g, '"').replace(/[‘’‚‛′]/g, "'"));
+    } catch {
+      return { ok: false, msg: 'Invalid JSON — check the syntax' };
+    }
   }
   const arr = Array.isArray(data) ? data : [data];
   const titleOf = (o: any) => (typeof o?.title === 'string' ? o.title : typeof o?.titre === 'string' ? o.titre : '').trim();
