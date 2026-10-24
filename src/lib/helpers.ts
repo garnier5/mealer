@@ -1,5 +1,5 @@
 import { RECIPE_ICONS } from '@/data/recipes';
-import type { Data, IconKey, Ingredient, Moment, Recipe, TintKey } from '@/types';
+import type { Data, IconKey, Ingredient, Moment, Picks, Recipe, TintKey } from '@/types';
 
 export const SLOT_COUNT = 14;
 
@@ -8,6 +8,7 @@ export const emptyPlan = (): (string | null)[] => new Array(SLOT_COUNT).fill(nul
 /** A fresh device: no plan, no own recipes, never synced. */
 export const emptyData = (): Data => ({
   plan: emptyPlan(),
+  picks: {},
   extra: [],
   tags: [],
   checked: {},
@@ -59,6 +60,55 @@ export function currentWeek(now = new Date()) {
   return { days, todayIdx, range };
 }
 
+// ── Names and variants ──
+
+/** The ingredient followed by its variants. */
+export const options = (i: Ingredient) => [i[0], ...(i[3] ?? [])];
+
+/** "Pasta, cucumber & chicken". */
+const joinNames = (names: string[]) => {
+  const low = names.map((n) => n.toLowerCase());
+  const list = low.length > 1 ? low.slice(0, -1).join(', ') + ' & ' + low[low.length - 1] : (low[0] ?? '');
+  return capitalize(list) || 'Untitled recipe';
+};
+
+/** The recipe's name, or its ingredients (variants included) when it has none. */
+export const recipeTitle = (r: Pick<Recipe, 'name' | 'ing'>) => r.name || joinNames(r.ing.map((i) => options(i).join(' / ')));
+
+/** The ingredient names a planned meal actually uses, its chosen variants applied. */
+export const chosenIngredients = (r: Recipe, pick?: number[]) => r.ing.map((i, j) => options(i)[pick?.[j] ?? 0] ?? i[0]);
+
+/** What a planned meal is called: its name, or the ingredients of the chosen variant. */
+export const mealTitle = (r: Recipe, pick?: number[]) => r.name || joinNames(chosenIngredients(r, pick));
+
+export const hasVariants = (r: Recipe) => r.ing.some((i) => !!i[3]?.length);
+
+/** Drops trailing zeros (the default option), so "no choice made" is always stored the same way. */
+export function cleanPick(pick: number[]): number[] {
+  const p = pick.slice();
+  while (p.length && !p[p.length - 1]) p.pop();
+  return p;
+}
+
+/** A random variant for every ingredient that has some. */
+export const randomPick = (r: Recipe) => cleanPick(r.ing.map((i) => Math.floor(Math.random() * options(i).length)));
+
+/** Picks read from storage or the server: only small whole numbers, only for real slots. */
+export function sanitizePicks(v: unknown): Picks {
+  const out: Picks = {};
+  if (!v || typeof v !== 'object') return out;
+  for (const [k, p] of Object.entries(v)) {
+    const slot = Number(k);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= SLOT_COUNT) continue;
+    const pick = sanitizePick(p);
+    if (pick.length) out[slot] = pick;
+  }
+  return out;
+}
+
+export const sanitizePick = (p: unknown) =>
+  Array.isArray(p) ? cleanPick(p.slice(0, 100).map((x) => (Number.isInteger(x) && x >= 0 && x <= MAX_VARIANTS ? x : 0))) : [];
+
 // ── Recipes from the "add" form or a JSON import ──
 
 export const iconFromName = (n: unknown): IconKey => {
@@ -69,7 +119,12 @@ export const iconFromName = (n: unknown): IconKey => {
 
 export const iconTint = (id: IconKey): TintKey => RECIPE_ICONS.find((x) => x[0] === id)?.[2] ?? 'plum';
 
-export function makeRecipe(title: string, desc: string, ings: string[], moment: Moment, idx: number, icon: unknown): Recipe {
+/** An ingredient from a list of names: the first one, then its variants. */
+export const toIngredient = ([name, ...variants]: string[]): Ingredient =>
+  variants.length ? [capitalize(name), 1, 'pc', variants.map(capitalize)] : [capitalize(name), 1, 'pc'];
+
+/** `ings`: one list per ingredient, its variants after it (["pasta", "rice"]). */
+export function makeRecipe(title: string, desc: string, ings: string[][], moment: Moment, idx: number, icon: unknown): Recipe {
   const ic = iconFromName(icon);
   return {
     id: `u${Date.now()}_${idx}`,
@@ -78,8 +133,8 @@ export function makeRecipe(title: string, desc: string, ings: string[], moment: 
     moment,
     icon: ic,
     tint: iconTint(ic),
-    desc: desc || 'Added by you.',
-    ing: ings.map((n) => [capitalize(n), 1, 'pc']),
+    desc,
+    ing: ings.map(toIngredient),
   };
 }
 
@@ -88,28 +143,34 @@ export function makeRecipe(title: string, desc: string, ings: string[], moment: 
 const MOMENTS: Moment[] = ['lunch', 'dinner', 'both'];
 const TINTS: TintKey[] = ['ocre', 'sage', 'terra', 'blue', 'plum'];
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max).trim() : '');
+export const MAX_VARIANTS = 5;
+/** The server refuses entries over 50 000 bytes; one refused entry would hold back the whole sync. */
+const MAX_BYTES = 45000;
+const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
 
 /**
  * Rebuilds a recipe from data the app didn't produce itself (shared by another device,
  * or cached from one): every malformed field falls back to a default so it can't crash a screen.
- * null when there's nothing usable (no id or no name).
+ * null when there's nothing usable (no id, or neither a name nor an ingredient).
  */
 export function sanitizeRecipe(v: unknown, id?: string): Recipe | null {
   if (!v || typeof v !== 'object') return null;
   const o = v as Record<string, unknown>;
   const rid = id ?? text(o.id, 100);
   const name = text(o.name, 200);
-  if (!rid || !name) return null;
   const icon = iconFromName(o.icon);
   const ing = Array.isArray(o.ing)
     ? o.ing.slice(0, 100).flatMap((x): Ingredient[] => {
         const n = Array.isArray(x) ? text(x[0], 200) : '';
         if (!n) return [];
         const qty = typeof x[1] === 'number' && Number.isFinite(x[1]) ? x[1] : 1;
-        return [[n, qty, text(x[2], 30) || 'pc']];
+        const unit = text(x[2], 30) || 'pc';
+        const variants = Array.isArray(x[3]) ? x[3].slice(0, MAX_VARIANTS).map((a: unknown) => text(a, 200)).filter(Boolean) : [];
+        return [variants.length ? [n, qty, unit, variants] : [n, qty, unit]];
       })
     : [];
-  return {
+  if (!rid || (!name && !ing.length)) return null;
+  const r: Recipe = {
     id: rid,
     name,
     short: text(o.short, 100) || name,
@@ -119,6 +180,8 @@ export function sanitizeRecipe(v: unknown, id?: string): Recipe | null {
     desc: text(o.desc, 2000),
     ing,
   };
+  while (r.ing.length > 1 && bytes(r) > MAX_BYTES) r.ing.pop();
+  return r;
 }
 
 type ImportResult ={ ok: true; recipes: Recipe[]; msg: string } | { ok: false; msg: string };
@@ -131,14 +194,19 @@ export function parseImport(text: string): ImportResult {
     return { ok: false, msg: 'Invalid JSON — check the syntax' };
   }
   const arr = Array.isArray(data) ? data : [data];
-  const titleOf = (o: any) => (typeof o?.title === 'string' ? o.title : typeof o?.titre === 'string' ? o.titre : '');
-  const valid = arr.filter((o: any) => o && typeof o === 'object' && titleOf(o).trim());
-  if (!valid.length) return { ok: false, msg: 'No valid recipe (missing “title” field)' };
-  const recipes = valid.map((o: any, j: number) => {
+  const titleOf = (o: any) => (typeof o?.title === 'string' ? o.title : typeof o?.titre === 'string' ? o.titre : '').trim();
+  // An ingredient is a name, or a list of names: the ingredient, then its variants.
+  const ingsOf = (o: any): string[][] =>
+    (Array.isArray(o?.ingredients) ? o.ingredients : []).flatMap((x: unknown) => {
+      const names = (Array.isArray(x) ? x : [x]).filter((n) => typeof n === 'string' || typeof n === 'number').map((n) => String(n).trim()).filter(Boolean);
+      return names.length ? [names] : [];
+    });
+  const valid = arr.filter((o: any) => o && typeof o === 'object' && (titleOf(o) || ingsOf(o).length));
+  if (!valid.length) return { ok: false, msg: 'No valid recipe (each needs a “title” or “ingredients”)' };
+  const recipes = valid.flatMap((o: any, j: number) => {
     const m = norm(o.meal || o.moment || '');
     const moment: Moment = m === 'lunch' || m === 'midi' ? 'lunch' : m === 'dinner' || m === 'soir' ? 'dinner' : 'both';
-    const ings = Array.isArray(o.ingredients) ? o.ingredients.map(String) : [];
-    return makeRecipe(titleOf(o).trim(), String(o.description || ''), ings, moment, j, o.icon);
+    return sanitizeRecipe(makeRecipe(titleOf(o), String(o.description || ''), ingsOf(o), moment, j, o.icon)) ?? [];
   });
   const n = recipes.length;
   return { ok: true, recipes, msg: `${n} ${n > 1 ? 'recipes' : 'recipe'} detected · ready to import` };

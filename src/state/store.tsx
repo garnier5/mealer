@@ -1,9 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
-import { currentWeek, emptyData, emptyPlan, fitsSlot, norm, sanitizeRecipe, shuffle, slotLabel, SLOT_COUNT } from '@/lib/helpers';
+import {
+  chosenIngredients,
+  cleanPick,
+  currentWeek,
+  emptyData,
+  emptyPlan,
+  fitsSlot,
+  mealTitle,
+  norm,
+  randomPick,
+  recipeTitle,
+  sanitizePicks,
+  sanitizeRecipe,
+  shuffle,
+  slotLabel,
+  SLOT_COUNT,
+} from '@/lib/helpers';
 import { useCloud } from '@/state/cloud';
 import { THEMES, TINTS, type Theme } from '@/theme/theme';
-import type { Ask, Data, Recipe, ShopItem, Sheet, Tab } from '@/types';
+import type { Ask, Data, Picks, Recipe, ShopItem, Sheet, Tab } from '@/types';
 
 const STORAGE_KEY = 'mealer/v1';
 
@@ -22,6 +38,7 @@ function load(): Data {
       ...fresh,
       ...saved,
       plan: Array.isArray(saved.plan) && saved.plan.length === SLOT_COUNT ? saved.plan.map((id) => (typeof id === 'string' ? id : null)) : fresh.plan,
+      picks: sanitizePicks(saved.picks),
       extra: Array.isArray(saved.extra) ? saved.extra.flatMap((r) => sanitizeRecipe(r) ?? []) : [],
       // A cache from before this version (or never synced) starts over with the server.
       sync: saved.sync?.linked === true ? saved.sync : fresh.sync,
@@ -43,6 +60,13 @@ export function resetLocalData() {
 // ── Current tab, mirrored in the URL hash so a reload (or a relaunch) lands on the same screen ──
 
 const TABS: Tab[] = ['week', 'search', 'recipes', 'shopping'];
+
+/** The picks without this slot's: a meal that changes goes back to its default variant. */
+const withoutPick = (picks: Picks, slot: number) => {
+  const next = { ...picks };
+  delete next[slot];
+  return next;
+};
 
 const tabFromHash = (): Tab => {
   const h = location.hash.replace(/^#\/?/, '');
@@ -96,12 +120,13 @@ function useStoreValue() {
 
   const shopping = useMemo<ShopItem[]>(() => {
     const map = new Map<string, string[]>();
-    data.plan.forEach((id) => {
+    data.plan.forEach((id, slot) => {
       const r = id ? byId[id] : undefined;
       if (!r) return;
-      r.ing.forEach(([name]) => {
+      const pick = data.picks[slot];
+      chosenIngredients(r, pick).forEach((name) => {
         const from = map.get(name) ?? [];
-        const label = r.short || r.name;
+        const label = r.short || mealTitle(r, pick);
         if (!from.includes(label)) from.push(label);
         map.set(name, from);
       });
@@ -112,7 +137,7 @@ function useStoreValue() {
       .map(([name, from]) => ({ key: name, name, from: 'For ' + from.join(' · '), custom: false }));
     const mine = data.custom.map((c) => ({ key: c.key, name: c.name, from: 'Added by you', custom: true }));
     return fromPlan.concat(mine);
-  }, [data.plan, data.removed, data.custom, byId]);
+  }, [data.plan, data.picks, data.removed, data.custom, byId]);
 
   const placed = (slot: number) => `Added to ${week.days[Math.floor(slot / 2)].short} · ${slotLabel(slot)}`;
 
@@ -135,26 +160,29 @@ function useStoreValue() {
       }
       const used = new Set<string>();
       const plan = emptyPlan();
+      const picks: Picks = {};
       for (const k of [0, 1]) {
         const pool = shuffle(recipes.filter((r) => fitsSlot(r, k)));
         for (let d = 0; d < 7; d++) {
           const r = pool.find((x) => !used.has(x.id)) ?? pool[d % pool.length];
           if (r) {
             plan[d * 2 + k] = r.id;
+            const pick = randomPick(r);
+            if (pick.length) picks[d * 2 + k] = pick;
             used.add(r.id);
           }
         }
       }
       // A new week starts a new shopping list: nothing bought or removed yet.
-      setData((d) => ({ ...d, plan, removed: {}, checked: {} }));
+      setData((d) => ({ ...d, plan, picks, removed: {}, checked: {} }));
       toast(`Week generated · ${plan.filter(Boolean).length} meals`);
     },
-    clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan(), removed: {}, checked: {} })),
+    clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan(), picks: {}, removed: {}, checked: {} })),
     assign: (slot: number, r: Recipe) => {
       setData((d) => {
         const plan = d.plan.slice();
         plan[slot] = r.id;
-        return { ...d, plan };
+        return { ...d, plan, picks: withoutPick(d.picks, slot) };
       });
       setSheet(null);
       toast(placed(slot));
@@ -163,11 +191,20 @@ function useStoreValue() {
       setData((d) => {
         const plan = d.plan.slice();
         plan[slot] = null;
-        return { ...d, plan };
+        return { ...d, plan, picks: withoutPick(d.picks, slot) };
       });
       setSheet(null);
       toast('Slot cleared');
     },
+    /** Uses option `option` (0 = the ingredient itself) for ingredient `j` of the meal in `slot`. */
+    setPick: (slot: number, j: number, option: number) =>
+      setData((d) => {
+        const pick = d.picks[slot]?.slice() ?? [];
+        while (pick.length <= j) pick.push(0);
+        pick[j] = option;
+        const clean = cleanPick(pick);
+        return { ...d, picks: clean.length ? { ...d.picks, [slot]: clean } : withoutPick(d.picks, slot) };
+      }),
     /** "Surprise me": random fitting recipe, preferring one not already planned. */
     fillSlot: (slot: number) => {
       const pool = recipes.filter((r) => fitsSlot(r, slot));
@@ -185,9 +222,10 @@ function useStoreValue() {
         ...d,
         extra: d.extra.filter((x) => x.id !== r.id),
         plan: d.plan.map((x) => (x === r.id ? null : x)),
+        picks: d.plan.reduce((p, x, slot) => (x === r.id ? withoutPick(p, slot) : p), d.picks),
       }));
       setSheet(null);
-      toast(r.name + ' deleted');
+      toast(recipeTitle(r) + ' deleted');
     },
     confirmDeleteRecipe: (r: Recipe) => {
       const notes = [
@@ -195,7 +233,7 @@ function useStoreValue() {
         cloud.status !== 'off' && 'It disappears on every device.',
       ].filter(Boolean);
       setDialog({
-        title: `Delete “${r.name}”?`,
+        title: `Delete “${recipeTitle(r)}”?`,
         body: notes.join(' ') || undefined,
         confirm: 'Delete',
         destructive: true,

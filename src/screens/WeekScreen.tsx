@@ -1,6 +1,6 @@
 import { Icon } from '@/components/Icon';
 import { Button, Eyebrow, IconButton, ProgressBar, RecipeTile, Screen, Title } from '@/components/ui';
-import { SLOT_COUNT } from '@/lib/helpers';
+import { mealTitle, SLOT_COUNT } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
@@ -82,10 +82,10 @@ export function WeekScreen() {
                   type="button"
                   className="press slot slot-filled"
                   onClick={() => openSheet({ kind: 'slot', slot })}
-                  aria-label={`Change ${r.name}, ${day.long} ${meal}`}>
+                  aria-label={`Change ${mealTitle(r, data.picks[slot])}, ${day.long} ${meal}`}>
                   <RecipeTile recipe={r} size={30} iconSize={17} />
                   <span className="clamp2" style={{ flex: 1, fontSize: 12.5, lineHeight: '15px', fontWeight: 700, color: c.text }}>
-                    {r.name}
+                    {mealTitle(r, data.picks[slot])}
                   </span>
                 </button>
               ) : (

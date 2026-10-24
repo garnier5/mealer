@@ -4,11 +4,12 @@ export type IconKey = 'fork' | 'bowl' | 'tart' | 'leaf' | 'meat' | 'fish' | 'egg
 
 export type TintKey = 'ocre' | 'sage' | 'terra' | 'blue' | 'plum';
 
-/** [name, quantity, unit] */
-export type Ingredient = [string, number, string];
+/** [name, quantity, unit, variants that can replace it (rice instead of pasta)] */
+export type Ingredient = [string, number, string, string[]?];
 
 export type Recipe = {
   id: string;
+  /** May be empty: the recipe is then called by its ingredients ("Pasta, cucumber & chicken"). */
   name: string;
   short: string;
   moment: Moment;
@@ -20,6 +21,12 @@ export type Recipe = {
 
 /** 14 slots: index = day * 2 + (0 lunch | 1 dinner). */
 export type Plan = (string | null)[];
+
+/**
+ * Variant chosen for each planned meal, by slot: pick[j] is the option used for the recipe's
+ * ingredient j (0 = the ingredient itself, 1 = its first variant…). Missing means all zeros.
+ */
+export type Picks = Record<number, number[]>;
 
 export type CustomItem = { key: string; name: string };
 
@@ -34,6 +41,7 @@ export type SyncBase = { linked: boolean; remote: Record<string, unknown> };
 /** Everything that survives an app restart. */
 export type Data = {
   plan: Plan;
+  picks: Picks;
   /** Every recipe (the name dates from when the app shipped built-in ones). */
   extra: Recipe[];
   tags: string[];

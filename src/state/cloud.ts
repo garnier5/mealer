@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { emptyData, emptyPlan, sanitizeRecipe, SLOT_COUNT } from '@/lib/helpers';
+import { emptyData, emptyPlan, sanitizePick, sanitizeRecipe, SLOT_COUNT } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
-import type { CustomItem, Data, Recipe } from '@/types';
+import type { CustomItem, Data, Picks, Recipe } from '@/types';
 
 /**
  * Cloud sync with Supabase.
@@ -27,7 +27,8 @@ export type Account = { id: string; email: string };
 function toEntries(d: Data): Entries {
   const out: Entries = {};
   d.extra.forEach((r) => (out['recipe:' + r.id] = r));
-  d.plan.forEach((id, i) => (out['slot:' + i] = id));
+  // A meal with a chosen variant is { id, pick }; without one it stays a plain id.
+  d.plan.forEach((id, i) => (out['slot:' + i] = id && d.picks[i]?.length ? { id, pick: d.picks[i] } : id));
   Object.keys(d.checked).forEach((k) => (out['checked:' + k] = true));
   Object.keys(d.removed).forEach((k) => (out['removed:' + k] = true));
   d.custom.forEach((c) => (out['item:' + c.key] = c.name));
@@ -36,9 +37,10 @@ function toEntries(d: Data): Entries {
 
 const byId = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true });
 
-function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'checked' | 'removed' | 'custom'> {
+function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'picks' | 'checked' | 'removed' | 'custom'> {
   const extra: Recipe[] = [];
   const plan = emptyPlan();
+  const picks: Picks = {};
   const checked: Record<string, true> = {};
   const removed: Record<string, true> = {};
   const custom: CustomItem[] = [];
@@ -50,14 +52,21 @@ function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'checked' | 'rem
     if (kind === 'recipe') {
       const r = sanitizeRecipe(value, key);
       if (r) extra.push(r);
-    } else if (kind === 'slot' && +key >= 0 && +key < SLOT_COUNT) plan[+key] = typeof value === 'string' ? value : null;
-    else if (kind === 'checked') checked[key] = true;
+    } else if (kind === 'slot' && +key >= 0 && +key < SLOT_COUNT) {
+      const meal = value as { id?: unknown; pick?: unknown } | null;
+      if (typeof value === 'string') plan[+key] = value;
+      else if (meal && typeof meal === 'object' && typeof meal.id === 'string') {
+        plan[+key] = meal.id;
+        const pick = sanitizePick(meal.pick);
+        if (pick.length) picks[+key] = pick;
+      }
+    } else if (kind === 'checked') checked[key] = true;
     else if (kind === 'removed') removed[key] = true;
     else if (kind === 'item') custom.push({ key, name: String(value).slice(0, 200) });
   }
   extra.sort((a, b) => byId(a.id, b.id));
   custom.sort((a, b) => byId(a.key, b.key));
-  return { extra, plan, checked, removed, custom };
+  return { extra, plan, picks, checked, removed, custom };
 }
 
 /** JSON with sorted keys: Postgres jsonb doesn't keep key order. */

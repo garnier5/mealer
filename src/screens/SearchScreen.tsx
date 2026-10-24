@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { Button, Card, Chip, EmptyState, Eyebrow, Field, MomentBadge, RecipeTile, Screen, Title } from '@/components/ui';
-import { norm } from '@/lib/helpers';
+import { norm, options, recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
@@ -17,8 +17,9 @@ export function SearchScreen() {
     const has = (name: string) => wanted.some((tg) => tg && norm(name).includes(tg));
     return recipes
       .map((r) => {
-        const names = r.ing.map(([n]) => n);
-        const hit = names.map(has);
+        // An ingredient with variants matches when any of them does.
+        const names = r.ing.map((i) => options(i).join(' / '));
+        const hit = r.ing.map((i) => options(i).some(has));
         const m = hit.filter(Boolean).length;
         const missing = names.filter((_, j) => !hit[j]);
         return { r, hit, m, n: names.length, ratio: m / names.length, missing };
@@ -30,7 +31,7 @@ export function SearchScreen() {
   // The ingredients used by the most recipes, lowercased like the tags they become.
   const suggestions = useMemo(() => {
     const count = new Map<string, number>();
-    recipes.forEach((r) => new Set(r.ing.map(([n]) => n.toLowerCase())).forEach((n) => count.set(n, (count.get(n) ?? 0) + 1)));
+    recipes.forEach((r) => new Set(r.ing.flatMap(options).map((n) => n.toLowerCase())).forEach((n) => count.set(n, (count.get(n) ?? 0) + 1)));
     return [...count.entries()]
       .filter(([n]) => !ntags.includes(norm(n)))
       .sort(([a, x], [b, y]) => y - x || a.localeCompare(b, 'en'))
@@ -107,7 +108,7 @@ export function SearchScreen() {
           <div className="row" style={{ gap: 12 }}>
             <RecipeTile recipe={r} />
             <div className="col" style={{ flex: 1, minWidth: 0, gap: 6 }}>
-              <div style={{ fontSize: 16, lineHeight: '20px', fontWeight: 800, color: c.text }}>{r.name}</div>
+              <div style={{ fontSize: 16, lineHeight: '20px', fontWeight: 800, color: c.text }}>{recipeTitle(r)}</div>
               <MomentBadge moment={r.moment} />
             </div>
             <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: m === n ? c.accentText : c.text }}>

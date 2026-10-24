@@ -1,6 +1,6 @@
 import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
-import { fitsSlot } from '@/lib/helpers';
+import { fitsSlot, mealTitle, recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
@@ -13,7 +13,7 @@ export function PlanPickerSheet({ id }: { id: string }) {
   const hint = r.moment === 'lunch' ? 'lunch only' : r.moment === 'dinner' ? 'dinner only' : 'lunch or dinner';
 
   return (
-    <SheetFrame title="Add to plan" subtitle={`${r.name} · ${hint}`}>
+    <SheetFrame title="Add to plan" subtitle={`${recipeTitle(r)} · ${hint}`}>
       <div className="row" style={{ gap: 8 }}>
         <div style={{ width: 48 }} />
         <div className="col-head">Lunch</div>
@@ -32,6 +32,7 @@ export function PlanPickerSheet({ id }: { id: string }) {
               const i = d * 2 + k;
               const ok = fitsSlot(r, i);
               const cur = data.plan[i] ? byId[data.plan[i]!] : undefined;
+              const curTitle = cur ? mealTitle(cur, data.picks[i]) : '';
               const isThis = cur?.id === r.id;
               const fg = isThis ? c.accentInk : cur ? c.text2 : c.accentText;
               return (
@@ -41,7 +42,7 @@ export function PlanPickerSheet({ id }: { id: string }) {
                   className="press row"
                   disabled={!ok}
                   onClick={() => assign(i, r)}
-                  aria-label={`${day.long} ${k ? 'dinner' : 'lunch'}${cur ? ', currently ' + cur.name : ', free'}`}
+                  aria-label={`${day.long} ${k ? 'dinner' : 'lunch'}${cur ? ', currently ' + curTitle : ', free'}`}
                   style={{
                     flex: 1,
                     minWidth: 0,
@@ -56,7 +57,7 @@ export function PlanPickerSheet({ id }: { id: string }) {
                   }}>
                   <Icon name={isThis ? 'check' : cur ? 'fork' : 'plus'} size={15} />
                   <span className="ellipsis" style={{ flex: 1, textAlign: 'left', fontSize: 12.5, fontWeight: 700 }}>
-                    {isThis ? 'Planned here' : cur ? cur.short : 'Free'}
+                    {isThis ? 'Planned here' : cur ? cur.short || curTitle : 'Free'}
                   </span>
                 </button>
               );

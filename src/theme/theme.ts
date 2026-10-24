@@ -41,5 +41,7 @@ export function applyTheme(t: Theme, dark: boolean) {
   const root = document.documentElement;
   for (const [k, v] of Object.entries(t)) root.style.setProperty('--' + kebab(k), v);
   root.style.colorScheme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.bg);
+  // index.html has one theme-color per system scheme; the app's own choice (which may differ
+  // from the system's) wins on both.
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', t.bg));
 }

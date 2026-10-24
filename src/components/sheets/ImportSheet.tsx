@@ -13,6 +13,18 @@ export function ImportSheet() {
   const [text, setText] = useState('');
   const res = text.trim() ? parseImport(text) : null;
 
+  // Handy to hand the format to someone (or an AI) writing recipes. Without clipboard access
+  // (an old browser, or no permission), the example goes into the box instead.
+  const copyExample = async () => {
+    try {
+      await navigator.clipboard.writeText(IMPORT_SAMPLE);
+      toast('Example copied');
+    } catch {
+      setText(IMPORT_SAMPLE);
+      toast('Example pasted in the box');
+    }
+  };
+
   const doImport = () => {
     if (!res?.ok) return;
     addRecipes(res.recipes);
@@ -32,9 +44,11 @@ export function ImportSheet() {
         </>
       }>
       <p style={{ fontSize: 14, lineHeight: '20px', color: c.text2 }}>
-        Paste a JSON array, like the example in the box. Supported fields: <strong style={{ fontWeight: 800, color: c.text }}>title</strong>, description, ingredients, meal (lunch,
-        dinner or both) and icon (plate, bowl, tart, salad, meat, fish, eggs, toast).
+        Paste a JSON array, like the example. Fields: <strong style={{ fontWeight: 800, color: c.text }}>ingredients</strong>, title (optional),
+        description, meal (lunch, dinner or both) and icon (plate, bowl, tart, salad, meat, fish, eggs, toast). Write an ingredient as a list to give it
+        variants: ["pasta", "rice"].
       </p>
+      <Button label="Copy example" icon="copy" variant="outline" height={42} onClick={copyExample} style={{ alignSelf: 'flex-start' }} />
       <TextArea
         className="code"
         value={text}

@@ -375,6 +375,27 @@ button:disabled {
   color: var(--text2);
 }
 
+/* A variant choice on a planned meal (pasta / rice). */
+.variant {
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 17px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+.variant[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 .row > .field {
   flex: 1;
 }

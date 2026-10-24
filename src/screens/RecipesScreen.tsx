@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Button, Card, EmptyState, Eyebrow, IconButton, MomentBadge, RecipeTile, Screen, Segmented, Title } from '@/components/ui';
+import { hasVariants, recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
@@ -55,21 +56,26 @@ export function RecipesScreen() {
               type="button"
               className="press row"
               onClick={() => openSheet({ kind: 'detail', id: r.id })}
-              aria-label={'View ' + r.name}
+              aria-label={'View ' + recipeTitle(r)}
               style={{ flex: 1, minWidth: 0, gap: 14, padding: 12, textAlign: 'left' }}>
               <RecipeTile recipe={r} size={54} iconSize={26} />
               <div className="col" style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <div style={{ fontSize: 15.5, lineHeight: '20px', fontWeight: 800, color: c.text }}>{r.name}</div>
-                <div className="ellipsis" style={{ fontSize: 13, lineHeight: '17px', color: c.text2 }}>
-                  {r.desc}
-                </div>
+                <div style={{ fontSize: 15.5, lineHeight: '20px', fontWeight: 800, color: c.text }}>{recipeTitle(r)}</div>
+                {r.desc && (
+                  <div className="ellipsis" style={{ fontSize: 13, lineHeight: '17px', color: c.text2 }}>
+                    {r.desc}
+                  </div>
+                )}
                 <div className="row" style={{ gap: 8, marginTop: 4 }}>
                   <MomentBadge moment={r.moment} small />
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: c.text3 }}>{r.ing.length} ingredients</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: c.text3 }}>
+                    {r.ing.length} {r.ing.length === 1 ? 'ingredient' : 'ingredients'}
+                    {hasVariants(r) && ' · variants'}
+                  </span>
                 </div>
               </div>
             </button>
-            <IconButton icon="trash" label={'Delete ' + r.name} onClick={() => confirmDeleteRecipe(r)} />
+            <IconButton icon="trash" label={'Delete ' + recipeTitle(r)} onClick={() => confirmDeleteRecipe(r)} />
           </Card>
         ))}
       </div>

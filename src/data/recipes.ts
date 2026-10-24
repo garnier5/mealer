@@ -12,11 +12,14 @@ export const RECIPE_ICONS: [IconKey, string, TintKey, string][] = [
   ['toast', 'Toast', 'ocre', 'toast'],
 ];
 
-/** Shown as the import box's placeholder: the expected format. */
+/**
+ * The import format, shown in the import box and copied by its "Copy example" button.
+ * An ingredient written as a list is an ingredient and its variants; the title is optional.
+ */
 export const IMPORT_SAMPLE = JSON.stringify(
   [
     { title: 'Zucchini gratin', description: 'Melting zucchini under golden Gruyère.', meal: 'dinner', icon: 'tart', ingredients: ['zucchini', 'heavy cream', 'grated gruyère', 'garlic'] },
-    { title: 'Tofu vegetable stir-fry', description: 'Crunchy vegetables, crispy tofu, soy sauce.', meal: 'both', icon: 'bowl', ingredients: ['tofu', 'bell peppers', 'broccoli', 'soy sauce'] },
+    { meal: 'lunch', icon: 'salad', ingredients: [['pasta', 'rice'], 'cucumber', 'chicken'] },
   ],
   null,
   2,
