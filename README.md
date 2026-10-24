@@ -46,6 +46,10 @@ Mises à jour : un nouveau déploiement est pris automatiquement au lancement su
 5. **Project Settings › API Keys** : copier l'URL du projet et la clé *publishable* dans `.env` (modèle :
    `.env.example`) sous `VITE_SUPABASE_URL` et `VITE_SUPABASE_KEY`.
 
+**Projet créé avec une version précédente de `schema.sql`** : exécuter aussi `supabase/upgrade-ingredients.sql`
+(référentiel d'ingrédients), **avant** de déployer la version qui l'utilise. Sans ça, le serveur refuse les lignes
+`ingredient` : l'app les garde sur l'appareil et synchronise le reste, mais le référentiel n'est pas partagé.
+
 Mot de passe oublié : le changer dans **Authentication › Users** (menu de l'utilisateur). Retirer l'accès à quelqu'un :
 supprimer son compte au même endroit. Son jeton de connexion reste valable jusqu'à son expiration (1 h par défaut) ;
 ensuite son appareil est déconnecté et efface sa copie des données.
@@ -78,7 +82,8 @@ src/
     Icon.tsx               icônes (lucide-react)
     ui.tsx                 primitives (Button, Card, Chip, Field, Segmented…)
     Toast.tsx, ConfirmDialog.tsx, ErrorBoundary.tsx
-    sheets/                bottom sheets (slot, détail, ajout au plan, nouvelle recette, import JSON, compte)
+    sheets/                bottom sheets (slot, détail, ajout au plan, nouvelle recette, import JSON,
+                           ingrédients, compte)
   data/recipes.ts          icônes de recette, exemple d'import JSON
   lib/helpers.ts           semaine, import JSON, validation des recettes reçues
   lib/supabase.ts          client Supabase (session dans localStorage)
@@ -87,12 +92,15 @@ src/
   theme/theme.ts           palettes clair / sombre
   types.ts
 supabase/schema.sql        schéma complet du projet Supabase
+supabase/upgrade-*.sql     mises à jour d'un projet existant
 ```
 
 ## Synchronisation
 
-- Les données (planning, recettes ajoutées, liste de courses) sont partagées par tous les comptes et mises à jour en
-  direct sur chaque appareil. Le thème et les ingrédients de recherche restent propres à chaque appareil.
+- Les données (planning, recettes, référentiel d'ingrédients, liste de courses) sont partagées par tous les comptes et
+  mises à jour en direct sur chaque appareil. Le thème et les ingrédients de recherche restent propres à chaque appareil.
+- **Ligne refusée par le serveur** (trop grosse, ou type inconnu du schéma) : elle reste sur l'appareil jusqu'au
+  prochain lancement de l'app, et le reste continue de se synchroniser.
 - **Hors ligne** : l'app fonctionne sur sa copie locale et renvoie les changements au retour du réseau.
 - **Déconnexion** : la copie locale est effacée ; elle revient du serveur à la connexion suivante.
 - **Rien n'est effacé côté serveur** : une suppression marque la ligne `deleted`, l'ancienne valeur reste dans

@@ -1,26 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import {
+  capitalize,
   chosenIngredients,
   cleanPick,
   currentWeek,
   emptyData,
   emptyPlan,
   fitsSlot,
+  ingredientKey,
+  ingredientNames,
   mealTitle,
   norm,
   options,
   randomPick,
   recipeTitle,
+  sanitizeIngredients,
   sanitizePicks,
   sanitizeRecipe,
   shuffle,
+  spellLikeList,
   slotLabel,
   SLOT_COUNT,
 } from '@/lib/helpers';
 import { useCloud } from '@/state/cloud';
 import { THEMES, TINTS, type Theme } from '@/theme/theme';
-import type { Ask, Data, Picks, Recipe, ShopItem, Sheet, Tab } from '@/types';
+import type { Ask, Data, Ingredient, Picks, Recipe, ShopItem, Sheet, Tab } from '@/types';
 
 const STORAGE_KEY = 'mealer/v1';
 
@@ -41,6 +46,7 @@ function load(): Data {
       plan: Array.isArray(saved.plan) && saved.plan.length === SLOT_COUNT ? saved.plan.map((id) => (typeof id === 'string' ? id : null)) : fresh.plan,
       picks: sanitizePicks(saved.picks),
       extra: Array.isArray(saved.extra) ? saved.extra.flatMap((r) => sanitizeRecipe(r) ?? []) : [],
+      ingredients: sanitizeIngredients(saved.ingredients),
       // A cache from before this version (or never synced) starts over with the server.
       sync: saved.sync?.linked === true ? saved.sync : fresh.sync,
     };
@@ -68,6 +74,35 @@ const withoutPick = (picks: Picks, slot: number) => {
   delete next[slot];
   return next;
 };
+
+/**
+ * Swaps in new versions of the recipes, keeping each planned meal on the variant it was set to.
+ * Meals remember variants by position, so the chosen ingredient is followed by name instead
+ * (through `rename` when ingredients were renamed): reordering or editing keeps "rice" on rice.
+ */
+function withRecipes(d: Data, next: Recipe[], rename = (n: string) => n): Data {
+  const before = new Map(d.extra.map((r) => [r.id, r]));
+  const after = new Map(next.map((r) => [r.id, r]));
+  let picks = d.picks;
+  d.plan.forEach((id, slot) => {
+    const old = id ? before.get(id) : undefined;
+    const r = id ? after.get(id) : undefined;
+    if (!old || !r || old === r || !d.picks[slot]) return;
+    const chosen = chosenIngredients(old, d.picks[slot]);
+    const want = new Map(old.ing.map((i, j) => [ingredientKey(rename(i[0])), ingredientKey(rename(chosen[j]))]));
+    const pick = cleanPick(
+      r.ing.map((i) => {
+        const k = want.get(ingredientKey(i[0]));
+        return k ? Math.max(0, options(i).findIndex((o) => ingredientKey(o) === k)) : 0;
+      }),
+    );
+    picks = pick.length ? { ...picks, [slot]: pick } : withoutPick(picks, slot);
+  });
+  return { ...d, extra: next, picks };
+}
+
+/** The ingredient with these names (the first one, then its variants), quantity and unit kept. */
+const withNames = (i: Ingredient, [name, ...variants]: string[]): Ingredient => (variants.length ? [name, i[1], i[2], variants] : [name, i[1], i[2]]);
 
 const tabFromHash = (): Tab => {
   const h = location.hash.replace(/^#\/?/, '');
@@ -105,6 +140,24 @@ function useStoreValue() {
 
   const cloud = useCloud(data, setData);
 
+  // Every ingredient a recipe uses is in the shared list: typed in a recipe, imported, or
+  // received from another device. This also fills the list from the recipes the first time.
+  // A short wait lets a change from another device land whole: an ingredient deleted there
+  // arrives a moment before the recipes it was removed from, and must not be added back.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const missing: Record<string, string> = {};
+      data.extra.forEach((r) =>
+        ingredientNames(r).forEach((n) => {
+          const k = ingredientKey(n);
+          if (k && !data.ingredients[k] && !missing[k]) missing[k] = n;
+        }),
+      );
+      if (Object.keys(missing).length) setData((d) => ({ ...d, ingredients: { ...missing, ...d.ingredients } }));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [data.extra, data.ingredients]);
+
   const toast = useCallback((msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToastMsg(msg);
@@ -118,6 +171,15 @@ function useStoreValue() {
   const recipes = data.extra;
   const byId = useMemo(() => Object.fromEntries(recipes.map((r) => [r.id, r])) as Record<string, Recipe>, [recipes]);
   const week = useMemo(() => currentWeek(), []);
+  const ingredientList = useMemo(
+    () =>
+      Object.entries(data.ingredients)
+        .map(([key, name]) => ({ key, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })),
+    [data.ingredients],
+  );
+  /** Recipes that use the ingredient with this key, as an ingredient or a variant. */
+  const usedIn = (key: string) => recipes.filter((r) => ingredientNames(r).some((n) => ingredientKey(n) === key));
 
   const shopping = useMemo<ShopItem[]>(() => {
     const map = new Map<string, string[]>();
@@ -243,29 +305,76 @@ function useStoreValue() {
     },
     // Recipes go through the same limits as the ones received from other devices: the server
     // rejects oversized entries, and one rejected entry would hold back the whole sync.
-    addRecipes: (list: Recipe[]) => setData((d) => ({ ...d, extra: d.extra.concat(list.flatMap((r) => sanitizeRecipe(r) ?? [])) })),
+    // Ingredients are spelled the way the shared list spells them, so "tomatoes" and "Tomatoes"
+    // end up as one line on the shopping list.
+    addRecipes: (list: Recipe[]) =>
+      setData((d) => ({ ...d, extra: d.extra.concat(list.flatMap((r) => sanitizeRecipe(r) ?? []).map((r) => spellLikeList(r, d.ingredients))) })),
     updateRecipe: (edited: Recipe) => {
-      const r = sanitizeRecipe(edited);
-      if (!r) return;
+      const clean = sanitizeRecipe(edited);
+      if (!clean) return;
       setData((d) => {
-        const old = d.extra.find((x) => x.id === r.id);
-        // Planned meals remember their variants by ingredient position: follow each chosen
-        // variant by name, so reordering or editing the ingredients keeps "rice" on rice.
-        let picks = d.picks;
-        if (old) {
-          d.plan.forEach((id, slot) => {
-            if (id !== r.id || !d.picks[slot]) return;
-            const chosen = new Map(old.ing.map((i, j) => [i[0], chosenIngredients(old, d.picks[slot])[j]]));
-            const pick = cleanPick(r.ing.map((i) => Math.max(0, options(i).indexOf(chosen.get(i[0]) ?? i[0]))));
-            picks = pick.length ? { ...picks, [slot]: pick } : withoutPick(picks, slot);
-          });
-        }
-        return {
-          ...d,
-          picks,
-          extra: old ? d.extra.map((x) => (x.id === r.id ? r : x)) : d.extra.concat(r),
-        };
+        const r = spellLikeList(clean, d.ingredients);
+        return d.extra.some((x) => x.id === r.id) ? withRecipes(d, d.extra.map((x) => (x.id === r.id ? r : x))) : { ...d, extra: d.extra.concat(r) };
       });
+    },
+
+    // ── Ingredient list ──
+    addIngredient: (value: string) => {
+      const name = capitalize(value.trim().slice(0, 200));
+      const key = ingredientKey(name);
+      if (!key) return;
+      if (data.ingredients[key]) {
+        toast(data.ingredients[key] + ' is already in the list');
+        return;
+      }
+      setData((d) => ({ ...d, ingredients: { ...d.ingredients, [key]: name } }));
+      toast(name + ' added');
+    },
+    /** Renames an ingredient everywhere; a name another ingredient already has merges the two. */
+    renameIngredient: (key: string, value: string) => {
+      const name = capitalize(value.trim().slice(0, 200));
+      const newKey = ingredientKey(name);
+      if (!newKey) return;
+      const rename = (n: string) => (ingredientKey(n) === key ? name : n);
+      const moveKeys = (m: Record<string, true>) => Object.fromEntries(Object.keys(m).map((k) => [rename(k), true as const]));
+      setData((d) => {
+        const ingredients = { ...d.ingredients };
+        delete ingredients[key];
+        ingredients[newKey] = name;
+        // After a merge a recipe may list the same ingredient twice: keep the first.
+        const once = (ing: Ingredient[]) => {
+          const seen = new Set<string>();
+          return ing.filter((i) => !seen.has(ingredientKey(i[0])) && !!seen.add(ingredientKey(i[0])));
+        };
+        const next = d.extra.map((r) =>
+          ingredientNames(r).some((n) => ingredientKey(n) === key)
+            ? spellLikeList({ ...r, ing: once(r.ing.map((i) => withNames(i, options(i).map(rename)))) }, ingredients)
+            : r,
+        );
+        return { ...withRecipes(d, next, rename), ingredients, checked: moveKeys(d.checked), removed: moveKeys(d.removed) };
+      });
+      toast(newKey === key ? 'Renamed to ' + name : 'Merged into ' + name);
+    },
+    /** Removes an ingredient from the list and from every recipe (a variant takes its place if it has some). */
+    deleteIngredient: (key: string) => {
+      const name = data.ingredients[key] ?? '';
+      setData((d) => {
+        const ingredients = { ...d.ingredients };
+        delete ingredients[key];
+        const next = d.extra.map((r) =>
+          ingredientNames(r).some((n) => ingredientKey(n) === key)
+            ? {
+                ...r,
+                ing: r.ing.flatMap((i) => {
+                  const names = options(i).filter((n) => ingredientKey(n) !== key);
+                  return names.length ? [withNames(i, names)] : [];
+                }),
+              }
+            : r,
+        );
+        return { ...withRecipes(d, next), ingredients };
+      });
+      toast(name + ' deleted');
     },
 
     addTag: (value: string) => {
@@ -300,7 +409,7 @@ function useStoreValue() {
     },
   };
 
-  return { data, tab, sheet, dialog, toastMsg, dark, t, tints, recipes, byId, week, shopping, cloud, ...actions };
+  return { data, tab, sheet, dialog, toastMsg, dark, t, tints, recipes, byId, week, shopping, ingredientList, usedIn, cloud, ...actions };
 }
 
 type Store = ReturnType<typeof useStoreValue>;

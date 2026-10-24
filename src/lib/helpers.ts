@@ -10,6 +10,7 @@ export const emptyData = (): Data => ({
   plan: emptyPlan(),
   picks: {},
   extra: [],
+  ingredients: {},
   tags: [],
   checked: {},
   custom: [],
@@ -58,6 +59,40 @@ export function currentWeek(now = new Date()) {
       ? `${MONTHS[first.getMonth()]} ${first.getDate()} – ${last.getDate()}`
       : `${MONTHS[first.getMonth()]} ${first.getDate()} – ${MONTHS[last.getMonth()]} ${last.getDate()}`;
   return { days, todayIdx, range };
+}
+
+// ── Ingredient list ──
+
+/** Same key for "Tomatoes", "tomatoes" and "Tomatoës": one entry in the ingredient list. */
+export const ingredientKey = (name: string) => norm(name).slice(0, 200);
+
+/** Every ingredient name a recipe mentions, variants included. */
+export const ingredientNames = (r: Recipe) => r.ing.flatMap((i) => options(i));
+
+/** Ingredient-list entries read from storage or the server. */
+export function sanitizeIngredients(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!v || typeof v !== 'object') return out;
+  for (const [k, n] of Object.entries(v)) {
+    const name = text(n, 200);
+    if (name && k === ingredientKey(name)) out[k] = name;
+  }
+  return out;
+}
+
+/**
+ * Writes every ingredient the way the list spells it ("tomatoes" → "Tomatoes"), and drops a
+ * variant that repeats its ingredient: the shopping list then never has the same thing twice.
+ */
+export function spellLikeList(r: Recipe, list: Record<string, string>): Recipe {
+  const spell = (n: string) => list[ingredientKey(n)] ?? n;
+  return {
+    ...r,
+    ing: r.ing.map((i) => {
+      const names = [...new Map(options(i).map((n) => [ingredientKey(n), spell(n)])).values()];
+      return names.length > 1 ? [names[0], i[1], i[2], names.slice(1)] : [names[0], i[1], i[2]];
+    }),
+  };
 }
 
 // ── Names and variants ──

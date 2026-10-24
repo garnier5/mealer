@@ -4,14 +4,39 @@ import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
 import { Button, Card, Chip, Field, IconButton, Label, Segmented, TextArea } from '@/components/ui';
 import { RECIPE_ICONS } from '@/data/recipes';
-import { iconTint, makeRecipe, MAX_VARIANTS, options, recipeTitle, toIngredient } from '@/lib/helpers';
+import { iconTint, ingredientKey, makeRecipe, MAX_VARIANTS, options, recipeTitle, toIngredient } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 import type { IconKey, Ingredient, Moment } from '@/types';
 
+/**
+ * Ingredients from the shared list that match what's being typed; tapping one adds it.
+ * pointerdown is cancelled so the field keeps focus (and the keyboard stays up) for the next one.
+ */
+function Suggestions({ query, exclude, onPick }: { query: string; exclude: Set<string>; onPick: (name: string) => void }) {
+  const { ingredientList } = useStore();
+  const q = ingredientKey(query);
+  if (!q) return null;
+  const hits = ingredientList
+    .filter((x) => x.key.includes(q) && !exclude.has(x.key))
+    .sort((a, b) => Number(b.key.startsWith(q)) - Number(a.key.startsWith(q)))
+    .slice(0, 6);
+  if (!hits.length) return null;
+  return (
+    <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+      {hits.map((x) => (
+        <button key={x.key} type="button" className="press suggestion" onPointerDown={(e) => e.preventDefault()} onClick={() => onPick(x.name)}>
+          <Icon name="plus" size={13} />
+          {x.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** New recipe, or editing an existing one when `id` is given. */
 export function AddRecipeSheet({ id }: { id?: string }) {
-  const { tints, byId, addRecipes, updateRecipe, openSheet, closeSheet, goTo, toast } = useStore();
+  const { data, tints, byId, addRecipes, updateRecipe, openSheet, closeSheet, goTo, toast } = useStore();
   const editing = id ? byId[id] : undefined;
   const [title, setTitle] = useState(editing?.name ?? '');
   const [desc, setDesc] = useState(editing?.desc ?? '');
@@ -24,12 +49,17 @@ export function AddRecipeSheet({ id }: { id?: string }) {
   const [icon, setIcon] = useState<IconKey>(editing?.icon ?? 'fork');
 
   const canSave = title.trim().length > 0 || ings.length > 0;
-  const pushIng = () => {
-    const v = draft.trim();
+  /** Spelled as in the shared ingredient list when it's already there ("tomatoes" → "Tomatoes"). */
+  const spell = (v: string) => data.ingredients[ingredientKey(v)] ?? v;
+  const used = new Set(ings.flat().map(ingredientKey));
+  const addIng = (value: string) => {
+    const v = value.trim();
     if (!v) return;
-    setIngs((l) => l.concat([[v]]));
+    if (used.has(ingredientKey(v))) toast(spell(v) + ' is already in this recipe');
+    else setIngs((l) => l.concat([[spell(v)]]));
     setDraft('');
   };
+  const pushIng = () => addIng(draft);
   const removeIng = (j: number) => {
     setIngs((l) => l.filter((_, k) => k !== j));
     setVariantFor(null);
@@ -38,11 +68,14 @@ export function AddRecipeSheet({ id }: { id?: string }) {
     setVariantFor(j);
     setVariantDraft('');
   };
-  const pushVariant = () => {
-    const v = variantDraft.trim();
-    if (v && variantFor !== null) setIngs((l) => l.map((g, k) => (k === variantFor ? g.concat(v) : g)));
+  const addVariant = (value: string) => {
+    const v = value.trim();
+    if (v && variantFor !== null && !ings[variantFor].some((n) => ingredientKey(n) === ingredientKey(v))) {
+      setIngs((l) => l.map((g, k) => (k === variantFor ? g.concat(spell(v)) : g)));
+    }
     setVariantFor(null);
   };
+  const pushVariant = () => addVariant(variantDraft);
   /** Swaps ingredient `j` with its neighbour (`by` = -1 up, 1 down); a recipe without a title is named in this order. */
   const moveIng = (j: number, by: -1 | 1) => {
     setIngs((l) => {
@@ -108,6 +141,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
           <Field value={draft} onChangeText={setDraft} onSubmit={pushIng} placeholder="Add an ingredient" maxLength={200} aria-label="Add an ingredient" />
           <Button label="Add" variant="tint" height={48} onClick={pushIng} />
         </div>
+        <Suggestions query={draft} exclude={used} onPick={addIng} />
         {ings.length > 0 && (
           <Card style={{ borderRadius: 18, overflow: 'hidden' }}>
             {ings.map((g, j) => (
@@ -150,6 +184,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
                     <Button label="Add" variant="tint" height={44} onClick={pushVariant} />
                   </div>
                 )}
+                {variantFor === j && <Suggestions query={variantDraft} exclude={new Set(g.map(ingredientKey))} onPick={addVariant} />}
               </div>
             ))}
           </Card>

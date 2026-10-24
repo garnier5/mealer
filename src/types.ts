@@ -44,6 +44,8 @@ export type Data = {
   picks: Picks;
   /** Every recipe (the name dates from when the app shipped built-in ones). */
   extra: Recipe[];
+  /** The shared ingredient list: normalized name (see ingredientKey) → name as displayed. */
+  ingredients: Record<string, string>;
   tags: string[];
   checked: Record<string, true>;
   custom: CustomItem[];
@@ -58,6 +60,8 @@ export type Sheet =
   | { kind: 'plan'; id: string }
   | { kind: 'add'; id?: string }
   | { kind: 'import' }
+  | { kind: 'ingredients' }
+  | { kind: 'ingredient'; key: string }
   | { kind: 'account' };
 
 export type Tab = 'week' | 'search' | 'recipes' | 'shopping';

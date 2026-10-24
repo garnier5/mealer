@@ -4,6 +4,7 @@ import { AccountSheet } from '@/components/sheets/AccountSheet';
 import { AddRecipeSheet } from '@/components/sheets/AddRecipeSheet';
 import { DetailSheet } from '@/components/sheets/DetailSheet';
 import { ImportSheet } from '@/components/sheets/ImportSheet';
+import { IngredientSheet, IngredientsSheet } from '@/components/sheets/IngredientsSheet';
 import { PlanPickerSheet } from '@/components/sheets/PlanPickerSheet';
 import { SlotSheet } from '@/components/sheets/SlotSheet';
 import { useStore } from '@/state/store';
@@ -63,6 +64,8 @@ export function SheetHost() {
         {shown?.kind === 'plan' && <PlanPickerSheet id={shown.id} />}
         {shown?.kind === 'add' && <AddRecipeSheet key={shown.id ?? 'new'} id={shown.id} />}
         {shown?.kind === 'import' && <ImportSheet />}
+        {shown?.kind === 'ingredients' && <IngredientsSheet />}
+        {shown?.kind === 'ingredient' && <IngredientSheet key={shown.key} ingKey={shown.key} />}
         {shown?.kind === 'account' && <AccountSheet />}
       </div>
     </div>

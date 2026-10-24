@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { emptyData, emptyPlan, sanitizePick, sanitizeRecipe, SLOT_COUNT } from '@/lib/helpers';
+import { emptyData, emptyPlan, sanitizeIngredients, sanitizePick, sanitizeRecipe, SLOT_COUNT } from '@/lib/helpers';
 import { supabase } from '@/lib/supabase';
 import type { CustomItem, Data, Picks, Recipe } from '@/types';
 
@@ -32,18 +32,20 @@ function toEntries(d: Data): Entries {
   Object.keys(d.checked).forEach((k) => (out['checked:' + k] = true));
   Object.keys(d.removed).forEach((k) => (out['removed:' + k] = true));
   d.custom.forEach((c) => (out['item:' + c.key] = c.name));
+  Object.entries(d.ingredients).forEach(([k, name]) => (out['ingredient:' + k] = name));
   return out;
 }
 
 const byId = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true });
 
-function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'picks' | 'checked' | 'removed' | 'custom'> {
+function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'picks' | 'checked' | 'removed' | 'custom' | 'ingredients'> {
   const extra: Recipe[] = [];
   const plan = emptyPlan();
   const picks: Picks = {};
   const checked: Record<string, true> = {};
   const removed: Record<string, true> = {};
   const custom: CustomItem[] = [];
+  const ingredients: Record<string, unknown> = {};
   for (const [id, value] of Object.entries(e)) {
     const i = id.indexOf(':');
     const kind = id.slice(0, i);
@@ -63,10 +65,11 @@ function fromEntries(e: Entries): Pick<Data, 'extra' | 'plan' | 'picks' | 'check
     } else if (kind === 'checked') checked[key] = true;
     else if (kind === 'removed') removed[key] = true;
     else if (kind === 'item') custom.push({ key, name: String(value).slice(0, 200) });
+    else if (kind === 'ingredient') ingredients[key] = value;
   }
   extra.sort((a, b) => byId(a.id, b.id));
   custom.sort((a, b) => byId(a.key, b.key));
-  return { extra, plan, picks, checked, removed, custom };
+  return { extra, plan, picks, checked, removed, custom, ingredients: sanitizeIngredients(ingredients) };
 }
 
 /** JSON with sorted keys: Postgres jsonb doesn't keep key order. */
@@ -157,6 +160,8 @@ export function useCloud(data: Data, setData: Dispatch<SetStateAction<Data>>) {
   dataRef.current = data;
   const busy = useRef(false);
   const pulling = useRef(false);
+  /** Entries the server refused (`kind:key`): held back until the app restarts, so the rest still syncs. */
+  const refused = useRef(new Set<string>());
   const uid = account?.id ?? null;
 
   // The session lives in localStorage, so a signed-in device opens straight into the app, even offline.
@@ -222,11 +227,27 @@ export function useCloud(data: Data, setData: Dispatch<SetStateAction<Data>>) {
     const timer = setTimeout(async () => {
       const d = dataRef.current;
       if (busy.current || !d.sync.linked) return;
-      const rows = pending(d);
+      const rows = pending(d).filter((r) => !refused.current.has(r.kind + ':' + r.key));
       if (!rows.length) return;
       busy.current = true;
       setStatus('syncing');
-      const { error } = await supabase!.from('entries').upsert(rows);
+      let sent = rows;
+      let { error } = await supabase!.from('entries').upsert(rows);
+      // 23514: a row breaks a rule of the table (too big, or a kind the server's schema doesn't
+      // know yet). Send the rows one by one so the others still go through.
+      if (error?.code === '23514') {
+        sent = [];
+        error = null;
+        for (const r of rows) {
+          const res = await supabase!.from('entries').upsert([r]);
+          if (!res.error) sent.push(r);
+          else if (res.error.code === '23514') refused.current.add(r.kind + ':' + r.key);
+          else {
+            error = res.error;
+            break;
+          }
+        }
+      }
       busy.current = false;
       if (error) {
         setStatus('offline');
@@ -237,7 +258,7 @@ export function useCloud(data: Data, setData: Dispatch<SetStateAction<Data>>) {
       setData((x) => {
         if (!x.sync.linked) return x;
         const remote = { ...x.sync.remote };
-        for (const r of rows) {
+        for (const r of sent) {
           if (r.deleted) delete remote[r.kind + ':' + r.key];
           else remote[r.kind + ':' + r.key] = r.value;
         }

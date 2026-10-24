@@ -17,17 +17,18 @@ export function RecipesScreen() {
 
   return (
     <Screen>
-      <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-        <div className="col" style={{ gap: 2 }}>
-          <Eyebrow>
-            {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
-          </Eyebrow>
-          <Title>Recipes</Title>
-        </div>
-        <Button label="Import JSON" icon="code" variant="warm" height={40} onClick={() => openSheet({ kind: 'import' })} />
+      <div className="col" style={{ gap: 2 }}>
+        <Eyebrow>
+          {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
+        </Eyebrow>
+        <Title>Recipes</Title>
       </div>
 
       <Button label="Add a recipe" icon="plus" height={54} onClick={() => openSheet({ kind: 'add' })} style={{ borderRadius: 18 }} />
+      <div className="row" style={{ gap: 8 }}>
+        <Button label="Ingredients" icon="leaf" variant="outline" height={44} onClick={() => openSheet({ kind: 'ingredients' })} style={{ flex: 1 }} />
+        <Button label="Import JSON" icon="code" variant="warm" height={44} onClick={() => openSheet({ kind: 'import' })} style={{ flex: 1 }} />
+      </div>
 
       {recipes.length === 0 && (
         <EmptyState icon="book" title="No recipes yet" body="Add your first recipe, or import several at once from JSON. Everyone on Mealer shares them." />

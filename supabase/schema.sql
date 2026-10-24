@@ -10,7 +10,8 @@
 -- passe `deleted` à true, et chaque ancienne valeur est gardée dans `entries_history`.
 
 create table public.entries (
-  kind text not null check (kind in ('recipe', 'hidden', 'slot', 'checked', 'removed', 'item')),
+  kind text not null constraint entries_kind_check
+    check (kind in ('recipe', 'hidden', 'slot', 'checked', 'removed', 'item', 'ingredient')),
   key text not null check (char_length(key) between 1 and 200),
   -- Limite de taille : empêche de remplir la base avec une seule valeur énorme.
   value jsonb check (pg_column_size(value) <= 50000),
