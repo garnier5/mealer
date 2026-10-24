@@ -84,6 +84,7 @@ button:disabled {
 #root {
   position: fixed;
   inset: 0;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
 }
@@ -569,9 +570,18 @@ textarea.code {
 
 /* ── Overlays: sheets, dialog, toast ── */
 
+/*
+ * Safari colors the status bar from the fixed elements at the top of the page, hidden or not:
+ * a closed overlay must be transparent, or the bar stays grey. It darkens only while open.
+ */
 .overlay {
   position: absolute;
   inset: 0;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.open > .overlay {
   background: var(--overlay);
 }
 
