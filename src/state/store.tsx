@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
-import { SEED_RECIPES } from '@/data/recipes';
 import { currentWeek, emptyData, emptyPlan, fitsSlot, norm, sanitizeRecipe, shuffle, slotLabel, SLOT_COUNT } from '@/lib/helpers';
 import { useCloud } from '@/state/cloud';
 import { THEMES, TINTS, type Theme } from '@/theme/theme';
@@ -91,13 +90,7 @@ function useStoreValue() {
   const t: Theme = dark ? THEMES.dark : THEMES.light;
   const tints = dark ? TINTS.dark : TINTS.light;
 
-  // An edited seed recipe is stored in `extra` under the seed's id and replaces it in place.
-  const recipes = useMemo(() => {
-    const own = new Map(data.extra.map((r) => [r.id, r]));
-    const seeds = SEED_RECIPES.map((s) => own.get(s.id) ?? s);
-    const added = data.extra.filter((r) => !SEED_RECIPES.some((s) => s.id === r.id));
-    return seeds.concat(added).filter((r) => !data.deleted[r.id]);
-  }, [data.extra, data.deleted]);
+  const recipes = data.extra;
   const byId = useMemo(() => Object.fromEntries(recipes.map((r) => [r.id, r])) as Record<string, Recipe>, [recipes]);
   const week = useMemo(() => currentWeek(), []);
 
@@ -136,6 +129,10 @@ function useStoreValue() {
     toggleTheme: () => setData((d) => ({ ...d, themePref: dark ? 'light' : 'dark' })),
 
     generate: () => {
+      if (!recipes.length) {
+        toast('Add some recipes first');
+        return;
+      }
       const used = new Set<string>();
       const plan = emptyPlan();
       for (const k of [0, 1]) {
@@ -148,10 +145,11 @@ function useStoreValue() {
           }
         }
       }
-      setData((d) => ({ ...d, plan, removed: {} }));
+      // A new week starts a new shopping list: nothing bought or removed yet.
+      setData((d) => ({ ...d, plan, removed: {}, checked: {} }));
       toast(`Week generated · ${plan.filter(Boolean).length} meals`);
     },
-    clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan() })),
+    clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan(), removed: {}, checked: {} })),
     assign: (slot: number, r: Recipe) => {
       setData((d) => {
         const plan = d.plan.slice();
@@ -175,14 +173,16 @@ function useStoreValue() {
       const pool = recipes.filter((r) => fitsSlot(r, slot));
       const fresh = pool.filter((r) => !data.plan.includes(r.id));
       const src = fresh.length ? fresh : pool;
-      if (!src.length) return;
+      if (!src.length) {
+        toast(`No recipe for ${slotLabel(slot).toLowerCase()} yet`);
+        return;
+      }
       actions.assign(slot, src[Math.floor(Math.random() * src.length)]);
     },
 
     deleteRecipe: (r: Recipe) => {
       setData((d) => ({
         ...d,
-        deleted: { ...d.deleted, [r.id]: true },
         extra: d.extra.filter((x) => x.id !== r.id),
         plan: d.plan.map((x) => (x === r.id ? null : x)),
       }));
@@ -202,12 +202,17 @@ function useStoreValue() {
         onConfirm: () => actions.deleteRecipe(r),
       });
     },
-    addRecipes: (list: Recipe[]) => setData((d) => ({ ...d, extra: d.extra.concat(list) })),
-    updateRecipe: (r: Recipe) =>
+    // Recipes go through the same limits as the ones received from other devices: the server
+    // rejects oversized entries, and one rejected entry would hold back the whole sync.
+    addRecipes: (list: Recipe[]) => setData((d) => ({ ...d, extra: d.extra.concat(list.flatMap((r) => sanitizeRecipe(r) ?? [])) })),
+    updateRecipe: (edited: Recipe) => {
+      const r = sanitizeRecipe(edited);
+      if (!r) return;
       setData((d) => ({
         ...d,
         extra: d.extra.some((x) => x.id === r.id) ? d.extra.map((x) => (x.id === r.id ? r : x)) : d.extra.concat(r),
-      })),
+      }));
+    },
 
     addTag: (value: string) => {
       const v = value.trim().toLowerCase();
@@ -234,7 +239,7 @@ function useStoreValue() {
       toast(it.name + ' removed');
     },
     addCustom: (value: string) => {
-      const v = value.trim();
+      const v = value.trim().slice(0, 200);
       if (!v) return;
       const name = v.charAt(0).toUpperCase() + v.slice(1);
       setData((d) => ({ ...d, custom: d.custom.concat({ key: 'c_' + Date.now(), name }) }));

@@ -63,12 +63,12 @@ export function AddRecipeSheet({ id }: { id?: string }) {
       }>
       <label className="col" style={{ gap: 6 }}>
         <Label>Title</Label>
-        <Field value={title} onChangeText={setTitle} autoCapitalize="sentences" placeholder="e.g. Zucchini gratin" style={{ fontWeight: 600 }} />
+        <Field value={title} onChangeText={setTitle} autoCapitalize="sentences" placeholder="e.g. Zucchini gratin" maxLength={200} style={{ fontWeight: 600 }} />
       </label>
 
       <label className="col" style={{ gap: 6 }}>
         <Label>Description</Label>
-        <TextArea value={desc} onChangeText={setDesc} placeholder="A few words about the dish…" rows={3} style={{ height: 88 }} />
+        <TextArea value={desc} onChangeText={setDesc} placeholder="A few words about the dish…" maxLength={2000} rows={3} style={{ height: 88 }} />
       </label>
 
       <div className="col" style={{ gap: 8 }}>
@@ -106,7 +106,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
       <div className="col" style={{ gap: 8 }}>
         <Label>Ingredients</Label>
         <div className="row" style={{ gap: 8 }}>
-          <Field value={draft} onChangeText={setDraft} onSubmit={pushIng} placeholder="Add an ingredient" aria-label="Add an ingredient" />
+          <Field value={draft} onChangeText={setDraft} onSubmit={pushIng} placeholder="Add an ingredient" maxLength={200} aria-label="Add an ingredient" />
           <Button label="Add" variant="tint" height={48} onClick={pushIng} />
         </div>
         {ings.length > 0 && (

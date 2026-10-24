@@ -34,8 +34,8 @@ export type SyncBase = { linked: boolean; remote: Record<string, unknown> };
 /** Everything that survives an app restart. */
 export type Data = {
   plan: Plan;
+  /** Every recipe (the name dates from when the app shipped built-in ones). */
   extra: Recipe[];
-  deleted: Record<string, true>;
   tags: string[];
   checked: Record<string, true>;
   custom: CustomItem[];

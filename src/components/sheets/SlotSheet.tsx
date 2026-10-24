@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
-import { Button, Field, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
+import { Button, EmptyState, Field, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
 import { fitsSlot, norm, slotLabel } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
@@ -15,7 +15,8 @@ export function SlotSheet({ slot }: { slot: number }) {
   const day = week.days[Math.floor(slot / 2)];
   const current = data.plan[slot] ? byId[data.plan[slot]!] : undefined;
   const q = norm(query);
-  const options = recipes.filter((r) => fitsSlot(r, slot)).filter((r) => !q || norm(r.name).includes(q));
+  const fitting = recipes.filter((r) => fitsSlot(r, slot));
+  const options = fitting.filter((r) => !q || norm(r.name).includes(q));
 
   return (
     <SheetFrame eyebrow="Choose a recipe" title={`${day.long} · ${slotLabel(slot)}`}>
@@ -33,16 +34,24 @@ export function SlotSheet({ slot }: { slot: number }) {
         </div>
       )}
 
-      <div className="row" style={{ gap: 8 }}>
-        <label className="search-box" style={{ height: 46 }}>
-          <Icon name="search" size={18} color={c.text3} />
-          <Field bare value={query} onChangeText={setQuery} type="search" placeholder="Search recipes…" aria-label="Search recipes" />
-        </label>
-        <Button label="Surprise me" icon="dice" height={46} onClick={() => fillSlot(slot)} />
-      </div>
+      {fitting.length === 0 ? (
+        <EmptyState icon="book" title={`No recipe for ${slotLabel(slot).toLowerCase()} yet`} body="Recipes marked for this meal, or for both, show up here.">
+          <Button label="Add a recipe" icon="plus" height={44} onClick={() => openSheet({ kind: 'add' })} style={{ marginTop: 2 }} />
+        </EmptyState>
+      ) : (
+        <div className="row" style={{ gap: 8 }}>
+          <label className="search-box" style={{ height: 46 }}>
+            <Icon name="search" size={18} color={c.text3} />
+            <Field bare value={query} onChangeText={setQuery} type="search" placeholder="Search recipes…" aria-label="Search recipes" />
+          </label>
+          <Button label="Surprise me" icon="dice" height={46} onClick={() => fillSlot(slot)} />
+        </div>
+      )}
 
       <div className="col" style={{ gap: 8 }}>
-        {options.length === 0 && <p style={{ padding: '20px 0', textAlign: 'center', fontSize: 14, color: c.text2 }}>No recipe matches this search.</p>}
+        {fitting.length > 0 && options.length === 0 && (
+          <p style={{ padding: '20px 0', textAlign: 'center', fontSize: 14, color: c.text2 }}>No recipe matches this search.</p>
+        )}
         {options.map((r) => {
           const on = current?.id === r.id;
           return (

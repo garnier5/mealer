@@ -9,7 +9,6 @@ export const emptyPlan = (): (string | null)[] => new Array(SLOT_COUNT).fill(nul
 export const emptyData = (): Data => ({
   plan: emptyPlan(),
   extra: [],
-  deleted: {},
   tags: [],
   checked: {},
   custom: [],

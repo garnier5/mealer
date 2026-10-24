@@ -79,7 +79,7 @@ src/
     ui.tsx                 primitives (Button, Card, Chip, Field, Segmented…)
     Toast.tsx, ConfirmDialog.tsx, ErrorBoundary.tsx
     sheets/                bottom sheets (slot, détail, ajout au plan, nouvelle recette, import JSON, compte)
-  data/recipes.ts          recettes de départ
+  data/recipes.ts          icônes de recette, exemple d'import JSON
   lib/helpers.ts           semaine, import JSON, validation des recettes reçues
   lib/supabase.ts          client Supabase (session dans localStorage)
   state/store.tsx          état global + persistance localStorage

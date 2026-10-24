@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { Button, Card, Chip, EmptyState, Eyebrow, Field, MomentBadge, RecipeTile, Screen, Title } from '@/components/ui';
-import { SEARCH_SUGGESTIONS } from '@/data/recipes';
 import { norm } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
@@ -28,7 +27,16 @@ export function SearchScreen() {
       .sort((a, b) => b.m - a.m || b.ratio - a.ratio);
   }, [recipes, tags]);
 
-  const suggestions = SEARCH_SUGGESTIONS.filter((x) => !ntags.includes(norm(x))).slice(0, 5);
+  // The ingredients used by the most recipes, lowercased like the tags they become.
+  const suggestions = useMemo(() => {
+    const count = new Map<string, number>();
+    recipes.forEach((r) => new Set(r.ing.map(([n]) => n.toLowerCase())).forEach((n) => count.set(n, (count.get(n) ?? 0) + 1)));
+    return [...count.entries()]
+      .filter(([n]) => !ntags.includes(norm(n)))
+      .sort(([a, x], [b, y]) => y - x || a.localeCompare(b, 'en'))
+      .slice(0, 5)
+      .map(([n]) => n);
+  }, [recipes, tags]);
   const submit = () => {
     addTag(draft);
     setDraft('');
@@ -67,15 +75,17 @@ export function SearchScreen() {
         </div>
       </Card>
 
-      <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: c.text3, marginRight: 2 }}>Suggestions</span>
-        {suggestions.map((x) => (
-          <button key={x} type="button" className="press suggestion" onClick={() => addTag(x)}>
-            <Icon name="plus" size={13} />
-            {x}
-          </button>
-        ))}
-      </div>
+      {suggestions.length > 0 && (
+        <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: c.text3, marginRight: 2 }}>Suggestions</span>
+          {suggestions.map((x) => (
+            <button key={x} type="button" className="press suggestion" onClick={() => addTag(x)}>
+              <Icon name="plus" size={13} />
+              {x}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
         <h2 style={{ fontSize: 17, fontWeight: 800, color: c.text }}>
@@ -87,8 +97,8 @@ export function SearchScreen() {
       {results.length === 0 && (
         <EmptyState
           icon="bowl"
-          title={tags.length ? 'No recipe with these ingredients' : 'Empty fridge?'}
-          body="Add one or more ingredients to see matching recipes."
+          title={!recipes.length ? 'No recipes yet' : tags.length ? 'No recipe with these ingredients' : 'Empty fridge?'}
+          body={!recipes.length ? 'Add recipes in the Recipes tab, then search them by ingredient here.' : 'Add one or more ingredients to see matching recipes.'}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button, Card, Eyebrow, IconButton, MomentBadge, RecipeTile, Screen, Segmented, Title } from '@/components/ui';
+import { Button, Card, EmptyState, Eyebrow, IconButton, MomentBadge, RecipeTile, Screen, Segmented, Title } from '@/components/ui';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
@@ -18,7 +18,9 @@ export function RecipesScreen() {
     <Screen>
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
         <div className="col" style={{ gap: 2 }}>
-          <Eyebrow>{recipes.length} recipes</Eyebrow>
+          <Eyebrow>
+            {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
+          </Eyebrow>
           <Title>Recipes</Title>
         </div>
         <Button label="Import JSON" icon="code" variant="warm" height={40} onClick={() => openSheet({ kind: 'import' })} />
@@ -26,15 +28,25 @@ export function RecipesScreen() {
 
       <Button label="Add a recipe" icon="plus" height={54} onClick={() => openSheet({ kind: 'add' })} style={{ borderRadius: 18 }} />
 
-      <Segmented
-        value={filter}
-        onChange={setFilter}
-        options={[
-          { key: 'all', label: 'All', count: recipes.length },
-          { key: 'lunch', label: 'Lunch', count: lunch.length },
-          { key: 'dinner', label: 'Dinner', count: dinner.length },
-        ]}
-      />
+      {recipes.length === 0 && (
+        <EmptyState icon="book" title="No recipes yet" body="Add your first recipe, or import several at once from JSON. Everyone on Mealer shares them." />
+      )}
+
+      {recipes.length > 0 && (
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { key: 'all', label: 'All', count: recipes.length },
+            { key: 'lunch', label: 'Lunch', count: lunch.length },
+            { key: 'dinner', label: 'Dinner', count: dinner.length },
+          ]}
+        />
+      )}
+
+      {recipes.length > 0 && list.length === 0 && (
+        <p style={{ padding: '20px 0', textAlign: 'center', fontSize: 14, color: c.text2 }}>No recipe for {filter} yet.</p>
+      )}
 
       <div className="col" style={{ gap: 10 }}>
         {list.map((r) => (

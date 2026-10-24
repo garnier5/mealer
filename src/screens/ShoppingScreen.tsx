@@ -38,7 +38,7 @@ export function ShoppingScreen() {
       </Card>
 
       <div className="row" style={{ gap: 8 }}>
-        <Field value={draft} onChangeText={setDraft} onSubmit={submit} autoCapitalize="sentences" placeholder="Add an item…" aria-label="Add an item" />
+        <Field value={draft} onChangeText={setDraft} onSubmit={submit} autoCapitalize="sentences" placeholder="Add an item…" maxLength={200} aria-label="Add an item" />
         <Button label="Add" icon="plus" height={48} onClick={submit} />
       </div>
 

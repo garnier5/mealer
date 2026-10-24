@@ -10,7 +10,13 @@ export function WeekScreen() {
   const planned = data.plan.filter((id) => id && byId[id]).length;
 
   const confirmClear = () =>
-    ask({ title: 'Clear the week?', body: 'All planned meals will be removed.', confirm: 'Clear', destructive: true, onConfirm: clearWeek });
+    ask({
+      title: 'Clear the week?',
+      body: 'All planned meals will be removed, and every item on the shopping list unchecked.',
+      confirm: 'Clear',
+      destructive: true,
+      onConfirm: clearWeek,
+    });
 
   return (
     <Screen>
