@@ -673,6 +673,23 @@ textarea.code {
   scrollbar-width: none;
 }
 
+/* Blocks keep their full height and the body scrolls: without this, a long list (an import,
+   a recipe's ingredients) gets squeezed and cut off instead of scrolling. */
+.sheet-body > * {
+  flex-shrink: 0;
+}
+
+/* Keyboard up: the sheet takes the whole visible area, and the home-bar margin isn't needed. */
+.sheet-root.kb .sheet {
+  max-height: 100%;
+  border-radius: 0;
+  padding-bottom: 10px;
+}
+
+.sheet-root.kb .sheet-footer {
+  margin-top: 10px;
+}
+
 .sheet-body::-webkit-scrollbar {
   display: none;
 }

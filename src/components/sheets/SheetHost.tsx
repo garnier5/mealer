@@ -25,20 +25,37 @@ export function SheetHost() {
   const shown = last.current;
 
   // Fit the overlay to the visible area, so the iOS keyboard pushes the sheet up instead of covering it.
+  // With the keyboard up (`kb`), the sheet takes all that's left, and the field being typed in is
+  // scrolled back into view: iOS doesn't do it inside a scrolling sheet that just got shorter.
   useEffect(() => {
     const vv = window.visualViewport;
     const el = root.current;
     if (!open || !vv || !el) return;
+    const reveal = () => {
+      const field = document.activeElement;
+      if (field instanceof HTMLElement && field.matches('input, textarea') && el.contains(field)) {
+        requestAnimationFrame(() => field.scrollIntoView({ block: 'center' }));
+      }
+    };
     const fit = () => {
       el.style.top = vv.offsetTop + 'px';
       el.style.height = vv.height + 'px';
+      el.classList.toggle('kb', window.innerHeight - vv.height > 120);
+    };
+    const resized = () => {
+      fit();
+      reveal();
     };
     fit();
-    vv.addEventListener('resize', fit);
+    vv.addEventListener('resize', resized);
     vv.addEventListener('scroll', fit);
+    // Moving from one field to the next while the keyboard is already up doesn't resize anything.
+    el.addEventListener('focusin', reveal);
     return () => {
-      vv.removeEventListener('resize', fit);
+      vv.removeEventListener('resize', resized);
       vv.removeEventListener('scroll', fit);
+      el.removeEventListener('focusin', reveal);
+      el.classList.remove('kb');
       el.style.top = '';
       el.style.height = '';
     };
