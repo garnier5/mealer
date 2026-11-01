@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
-import { Button, Card, EmptyState, MomentBadge, RecipeTile, TextArea } from '@/components/ui';
+import { Button, Card, EmptyState, HealthyBadge, MomentBadge, RecipeTile, TextArea } from '@/components/ui';
 import { IMPORT_SAMPLE } from '@/data/recipes';
 import { hasVariants, parseImport, recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
@@ -17,8 +17,9 @@ function PreviewRow({ recipe: r, open, onToggle, first }: { recipe: Recipe; open
         <RecipeTile recipe={r} size={38} iconSize={20} />
         <div className="col" style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <div style={{ fontSize: 14.5, lineHeight: '19px', fontWeight: 800, color: c.text }}>{recipeTitle(r)}</div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <MomentBadge moment={r.moment} small />
+            {r.healthy && <HealthyBadge small />}
             <span style={{ fontSize: 12.5, fontWeight: 700, color: c.text3 }}>
               {r.ing.length} {r.ing.length === 1 ? 'ingredient' : 'ingredients'}
               {hasVariants(r) && ' · variants'}
@@ -109,7 +110,7 @@ export function ImportSheet() {
       }>
       <p style={{ fontSize: 14, lineHeight: '20px', color: c.text2 }}>
         Copy recipes written as JSON, like the example, then tap Paste. Fields: <strong style={{ fontWeight: 800, color: c.text }}>ingredients</strong>,
-        title (optional), description, meal (lunch, dinner or both) and icon (chef, bowl, tart, salad, meat, fish, toast, cake). An ingredient written as a
+        title (optional), description, meal (lunch, dinner or both) and icon (chef, bowl, tart, salad, meat, fish, toast, cake) and healthy (true or false). An ingredient written as a
         list has variants: ["pasta", "rice"].
       </p>
       <div className="row" style={{ gap: 8 }}>

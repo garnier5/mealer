@@ -22,7 +22,7 @@ export const RECIPE_ICONS: [IconKey, string, TintKey, string][] = [
 export const IMPORT_SAMPLE = JSON.stringify(
   [
     { title: 'Zucchini gratin', description: 'Melting zucchini under golden Gruyère.', meal: 'dinner', icon: 'tart', ingredients: ['zucchini', 'heavy cream', 'grated gruyère', 'garlic'] },
-    { meal: 'lunch', icon: 'salad', ingredients: [['pasta', 'rice'], 'cucumber', 'chicken'] },
+    { meal: 'lunch', icon: 'salad', healthy: true, ingredients: [['pasta', 'rice'], 'cucumber', 'chicken'] },
   ],
   null,
   2,

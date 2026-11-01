@@ -17,6 +17,7 @@ export const emptyData = (): Data => ({
   removed: {},
   themePref: null,
   variety: [7, 7],
+  healthyWeek: false,
   sync: { linked: false, remote: {} },
 });
 
@@ -169,7 +170,7 @@ export const toIngredient = ([name, ...variants]: string[]): Ingredient =>
   variants.length ? [capitalize(name), 1, 'pc', variants.map(capitalize)] : [capitalize(name), 1, 'pc'];
 
 /** `ings`: one list per ingredient, its variants after it (["pasta", "rice"]). */
-export function makeRecipe(title: string, desc: string, ings: string[][], moment: Moment, idx: number, icon: unknown): Recipe {
+export function makeRecipe(title: string, desc: string, ings: string[][], moment: Moment, idx: number, icon: unknown, healthy = false): Recipe {
   const ic = iconFromName(icon);
   return {
     id: `u${Date.now()}_${idx}`,
@@ -180,6 +181,7 @@ export function makeRecipe(title: string, desc: string, ings: string[][], moment
     tint: iconTint(ic),
     desc,
     ing: ings.map(toIngredient),
+    ...(healthy && { healthy: true }),
   };
 }
 
@@ -225,6 +227,7 @@ export function sanitizeRecipe(v: unknown, id?: string): Recipe | null {
     desc: text(o.desc, 2000),
     ing,
   };
+  if (o.healthy === true) r.healthy = true;
   while (r.ing.length > 1 && bytes(r) > MAX_BYTES) r.ing.pop();
   return r;
 }
@@ -256,7 +259,8 @@ export function parseImport(text: string): ImportResult {
   const recipes = valid.flatMap((o: any, j: number) => {
     const m = norm(o.meal || o.moment || '');
     const moment: Moment = m === 'lunch' || m === 'midi' ? 'lunch' : m === 'dinner' || m === 'soir' ? 'dinner' : 'both';
-    return sanitizeRecipe(makeRecipe(titleOf(o), String(o.description || ''), ingsOf(o), moment, j, o.icon)) ?? [];
+    const healthy = o.healthy === true || ['true', 'yes', 'oui'].includes(norm(String(o.healthy ?? '')));
+    return sanitizeRecipe(makeRecipe(titleOf(o), String(o.description || ''), ingsOf(o), moment, j, o.icon, healthy)) ?? [];
   });
   const n = recipes.length;
   return { ok: true, recipes, msg: `${n} ${n > 1 ? 'recipes' : 'recipe'} detected · ready to import` };

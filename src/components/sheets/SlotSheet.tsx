@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
-import { Button, EmptyState, Field, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
+import { Button, EmptyState, Field, HealthyBadge, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
 import { fitsSlot, mealTitle, norm, options as variantsOf, recipeTitle, slotLabel } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
@@ -96,7 +96,10 @@ export function SlotSheet({ slot }: { slot: number }) {
               <RecipeTile recipe={r} size={40} iconSize={21} />
               <div className="col" style={{ flex: 1, minWidth: 0, gap: 4 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: c.text }}>{recipeTitle(r)}</div>
-                <MomentBadge moment={r.moment} small />
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  <MomentBadge moment={r.moment} small />
+                  {r.healthy && <HealthyBadge small />}
+                </div>
               </div>
               {on && <Icon name="check" size={20} color={c.accentText} />}
             </button>

@@ -50,6 +50,7 @@ function load(): Data {
       extra: Array.isArray(saved.extra) ? saved.extra.flatMap((r) => sanitizeRecipe(r) ?? []) : [],
       ingredients: sanitizeIngredients(saved.ingredients),
       variety: Array.isArray(saved.variety) ? [sanitizeVariety(saved.variety[0]), sanitizeVariety(saved.variety[1])] : fresh.variety,
+      healthyWeek: saved.healthyWeek === true,
       // A cache from before this version (or never synced) starts over with the server.
       sync: saved.sync?.linked === true ? saved.sync : fresh.sync,
     };
@@ -223,8 +224,9 @@ function useStoreValue() {
      * Fills the week with `variety[k]` different recipes for lunch (k = 0) and dinner (k = 1).
      * A recipe used several times is on consecutive days, with the same variant: cooked once,
      * eaten for a few days. Dinner prefers recipes that aren't already at lunch.
+     * A healthy week takes healthy recipes first; regular ones only make up the number.
      */
-    generate: (variety: [number, number]) => {
+    generate: (variety: [number, number], healthy: boolean) => {
       setSheet(null);
       if (!recipes.length) {
         toast('Add some recipes first');
@@ -234,8 +236,10 @@ function useStoreValue() {
       const plan = emptyPlan();
       const picks: Picks = {};
       for (const k of [0, 1]) {
-        const pool = shuffle(recipes.filter((r) => fitsSlot(r, k)));
-        const chosen = pool.filter((r) => !used.has(r.id)).concat(pool.filter((r) => used.has(r.id))).slice(0, sanitizeVariety(variety[k]));
+        const rank = (r: Recipe) => (healthy && !r.healthy ? 2 : 0) + (used.has(r.id) ? 1 : 0);
+        const pool = shuffle(recipes.filter((r) => fitsSlot(r, k))).sort((a, b) => rank(a) - rank(b));
+        // Shuffled again so the regular recipes completing a healthy week aren't always at its end.
+        const chosen = shuffle(pool.slice(0, sanitizeVariety(variety[k])));
         const runPicks = chosen.map(randomPick);
         for (let d = 0; d < 7 && chosen.length; d++) {
           const run = runOf(d, chosen.length);
@@ -245,8 +249,8 @@ function useStoreValue() {
         chosen.forEach((r) => used.add(r.id));
       }
       // A new week starts a new shopping list: nothing bought or removed yet.
-      setData((d) => ({ ...d, plan, picks, variety, removed: {}, checked: {} }));
-      toast(`Week generated · ${plan.filter(Boolean).length} meals`);
+      setData((d) => ({ ...d, plan, picks, variety, healthyWeek: healthy, removed: {}, checked: {} }));
+      toast(`${healthy ? 'Healthy week' : 'Week'} generated · ${plan.filter(Boolean).length} meals`);
     },
     clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan(), picks: {}, removed: {}, checked: {} })),
     assign: (slot: number, r: Recipe) => {

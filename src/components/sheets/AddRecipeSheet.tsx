@@ -47,6 +47,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
   const [variantDraft, setVariantDraft] = useState('');
   const [moment, setMoment] = useState<Moment>(editing?.moment ?? 'both');
   const [icon, setIcon] = useState<IconKey>(editing?.icon ?? 'fork');
+  const [healthy, setHealthy] = useState(editing?.healthy ?? false);
 
   const canSave = title.trim().length > 0 || ings.length > 0;
   /** Spelled as in the shared ingredient list when it's already there ("tomatoes" → "Tomatoes"). */
@@ -98,6 +99,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
         moment,
         icon,
         tint: iconTint(icon),
+        healthy: healthy || undefined,
         // Keep quantities of ingredients that are still there.
         ing: ings.map((g) => {
           const old = editing.ing.find(([n]) => n === g[0]);
@@ -109,7 +111,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
       toast('Recipe updated');
       return;
     }
-    addRecipes([makeRecipe(title.trim(), desc.trim(), ings, moment, 0, icon)]);
+    addRecipes([makeRecipe(title.trim(), desc.trim(), ings, moment, 0, icon, healthy)]);
     closeSheet();
     goTo('recipes');
     toast('Recipe added');
@@ -205,6 +207,19 @@ export function AddRecipeSheet({ id }: { id?: string }) {
             { key: 'both', label: 'Both', icon: 'half' },
           ]}
         />
+      </div>
+
+      <div className="col" style={{ gap: 8 }}>
+        <Label>Type</Label>
+        <Segmented
+          value={healthy ? 'healthy' : 'regular'}
+          onChange={(k) => setHealthy(k === 'healthy')}
+          options={[
+            { key: 'regular', label: 'Regular' },
+            { key: 'healthy', label: 'Healthy', icon: 'sprout' },
+          ]}
+        />
+        <span style={{ fontSize: 13, lineHeight: '18px', color: c.text3 }}>A healthy week only picks healthy recipes, as long as there are enough of them.</span>
       </div>
 
       <div className="col" style={{ gap: 8 }}>

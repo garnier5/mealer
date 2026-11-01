@@ -18,6 +18,8 @@ export type Recipe = {
   tint: TintKey;
   desc: string;
   ing: Ingredient[];
+  /** Picked first for a healthy week. Absent rather than false: recipes saved before it stay as they were. */
+  healthy?: true;
 };
 
 /** 14 slots: index = day * 2 + (0 lunch | 1 dinner). */
@@ -54,6 +56,8 @@ export type Data = {
   themePref: 'light' | 'dark' | null;
   /** How many different recipes a generated week has, [lunch, dinner], 1 to 7 (this device only). */
   variety: [number, number];
+  /** Whether the last generated week was a healthy one (this device only). */
+  healthyWeek: boolean;
   sync: SyncBase;
 };
 

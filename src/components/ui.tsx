@@ -74,6 +74,18 @@ export function MomentBadge({ moment, small }: { moment: Moment; small?: boolean
   );
 }
 
+export function HealthyBadge({ small }: { small?: boolean }) {
+  const { tints } = useStore();
+  const [bg, fg] = tints.sage;
+  const h = small ? 20 : 24;
+  return (
+    <span className="badge" style={{ height: h, borderRadius: h / 2, backgroundColor: bg, color: fg, fontSize: small ? 11 : 12 }}>
+      <Icon name="sprout" size={small ? 11 : 13} />
+      Healthy
+    </span>
+  );
+}
+
 // ── Controls ──
 
 type ButtonVariant = 'primary' | 'outline' | 'tint' | 'warm';

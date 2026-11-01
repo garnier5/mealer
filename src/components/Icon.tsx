@@ -27,6 +27,7 @@ import {
   Share,
   ShoppingBasket,
   Soup,
+  Sprout,
   Sun,
   Trash2,
   Upload,
@@ -64,6 +65,7 @@ const GLYPHS = {
   users: Users,
   share: Share,
   utensils: Utensils,
+  sprout: Sprout,
   // recipe icons
   fork: ChefHat,
   bowl: Soup,

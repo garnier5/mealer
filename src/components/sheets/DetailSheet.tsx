@@ -1,6 +1,6 @@
 import { Icon } from '@/components/Icon';
 import { SheetFrame } from '@/components/sheets/SheetFrame';
-import { Button, Card, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
+import { Button, Card, HealthyBadge, IconButton, MomentBadge, RecipeTile } from '@/components/ui';
 import { recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
@@ -23,7 +23,10 @@ export function DetailSheet({ id }: { id: string }) {
           <Button label="Add to plan" icon="calPlus" onClick={() => openSheet({ kind: 'plan', id: r.id })} style={{ flex: 1 }} />
         </>
       }>
-      <MomentBadge moment={r.moment} />
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <MomentBadge moment={r.moment} />
+        {r.healthy && <HealthyBadge />}
+      </div>
       {r.desc && <p style={{ fontSize: 15, lineHeight: '22px', color: c.text2 }}>{r.desc}</p>}
 
       {where.length > 0 && (

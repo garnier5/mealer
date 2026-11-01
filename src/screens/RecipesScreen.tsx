@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
-import { Button, Card, EmptyState, Eyebrow, IconButton, MomentBadge, RecipeTile, Screen, Segmented, Title } from '@/components/ui';
+import { Icon } from '@/components/Icon';
+import { Button, Card, EmptyState, Eyebrow, HealthyBadge, IconButton, MomentBadge, RecipeTile, Screen, Segmented, Title } from '@/components/ui';
 import { hasVariants, recipeTitle } from '@/lib/helpers';
 import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
@@ -8,12 +9,17 @@ import { c } from '@/theme/theme';
 type Filter = 'all' | 'lunch' | 'dinner';
 
 export function RecipesScreen() {
-  const { recipes, openSheet, confirmDeleteRecipe } = useStore();
+  const { recipes, tints, openSheet, confirmDeleteRecipe } = useStore();
   const [filter, setFilter] = useState<Filter>('all');
+  const [healthyOnly, setHealthyOnly] = useState(false);
 
-  const lunch = recipes.filter((r) => r.moment !== 'dinner');
-  const dinner = recipes.filter((r) => r.moment !== 'lunch');
-  const list = filter === 'lunch' ? lunch : filter === 'dinner' ? dinner : recipes;
+  // The counts follow the healthy filter, so they always match the list shown.
+  const shown = healthyOnly ? recipes.filter((r) => r.healthy) : recipes;
+  const lunch = shown.filter((r) => r.moment !== 'dinner');
+  const dinner = shown.filter((r) => r.moment !== 'lunch');
+  const list = filter === 'lunch' ? lunch : filter === 'dinner' ? dinner : shown;
+  const healthyCount = recipes.filter((r) => r.healthy).length;
+  const [sageBg, sageFg] = tints.sage;
 
   return (
     <Screen>
@@ -35,19 +41,37 @@ export function RecipesScreen() {
       )}
 
       {recipes.length > 0 && (
-        <Segmented
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { key: 'all', label: 'All', count: recipes.length },
-            { key: 'lunch', label: 'Lunch', count: lunch.length },
-            { key: 'dinner', label: 'Dinner', count: dinner.length },
-          ]}
-        />
+        <div className="col" style={{ gap: 8 }}>
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { key: 'all', label: 'All', count: shown.length },
+              { key: 'lunch', label: 'Lunch', count: lunch.length },
+              { key: 'dinner', label: 'Dinner', count: dinner.length },
+            ]}
+          />
+          <button
+            type="button"
+            className="press suggestion"
+            aria-pressed={healthyOnly}
+            onClick={() => setHealthyOnly((v) => !v)}
+            style={{
+              alignSelf: 'flex-start',
+              borderColor: healthyOnly ? sageFg : undefined,
+              backgroundColor: healthyOnly ? sageBg : undefined,
+              color: healthyOnly ? sageFg : undefined,
+            }}>
+            <Icon name={healthyOnly ? 'check' : 'sprout'} size={14} />
+            Healthy only · {healthyCount}
+          </button>
+        </div>
       )}
 
       {recipes.length > 0 && list.length === 0 && (
-        <p style={{ padding: '20px 0', textAlign: 'center', fontSize: 14, color: c.text2 }}>No recipe for {filter} yet.</p>
+        <p style={{ padding: '20px 0', textAlign: 'center', fontSize: 14, color: c.text2 }}>
+          {healthyOnly ? `No healthy recipe${filter === 'all' ? '' : ' for ' + filter} yet.` : `No recipe for ${filter} yet.`}
+        </p>
       )}
 
       <div className="col" style={{ gap: 10 }}>
@@ -67,8 +91,9 @@ export function RecipesScreen() {
                     {r.desc}
                   </div>
                 )}
-                <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                   <MomentBadge moment={r.moment} small />
+                  {r.healthy && <HealthyBadge small />}
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: c.text3 }}>
                     {r.ing.length} {r.ing.length === 1 ? 'ingredient' : 'ingredients'}
                     {hasVariants(r) && ' · variants'}
