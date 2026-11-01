@@ -51,6 +51,8 @@ export type Data = {
   custom: CustomItem[];
   removed: Record<string, true>;
   themePref: 'light' | 'dark' | null;
+  /** How many different recipes a generated week has, [lunch, dinner], 1 to 7 (this device only). */
+  variety: [number, number];
   sync: SyncBase;
 };
 
@@ -62,7 +64,8 @@ export type Sheet =
   | { kind: 'import' }
   | { kind: 'ingredients' }
   | { kind: 'ingredient'; key: string }
-  | { kind: 'account' };
+  | { kind: 'account' }
+  | { kind: 'generate' };
 
 export type Tab = 'week' | 'search' | 'recipes' | 'shopping';
 

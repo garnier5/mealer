@@ -16,6 +16,7 @@ export const emptyData = (): Data => ({
   custom: [],
   removed: {},
   themePref: null,
+  variety: [7, 7],
   sync: { linked: false, remote: {} },
 });
 
@@ -38,6 +39,15 @@ export function shuffle<T>(list: T[]): T[] {
 export const fitsSlot = (r: Recipe, slot: number) => (slot % 2 === 0 ? r.moment !== 'dinner' : r.moment !== 'lunch');
 
 export const slotLabel = (slot: number) => (slot % 2 ? 'Dinner' : 'Lunch');
+
+/** A number of different recipes for a week: a whole number from 1 to 7. */
+export const sanitizeVariety = (v: unknown) => (Number.isInteger(v) ? Math.min(7, Math.max(1, v as number)) : 7);
+
+/**
+ * Which of `n` recipes day `d` gets: the week cut into `n` runs of consecutive days,
+ * as even as possible (3 recipes: Mon–Wed, Thu–Fri, Sat–Sun).
+ */
+export const runOf = (d: number, n: number) => Math.floor((d * n) / 7);
 
 // ── Current week (Monday → Sunday) ──
 

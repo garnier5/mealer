@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { AccountSheet } from '@/components/sheets/AccountSheet';
 import { AddRecipeSheet } from '@/components/sheets/AddRecipeSheet';
 import { DetailSheet } from '@/components/sheets/DetailSheet';
+import { GenerateSheet } from '@/components/sheets/GenerateSheet';
 import { ImportSheet } from '@/components/sheets/ImportSheet';
 import { IngredientSheet, IngredientsSheet } from '@/components/sheets/IngredientsSheet';
 import { PlanPickerSheet } from '@/components/sheets/PlanPickerSheet';
@@ -84,6 +85,7 @@ export function SheetHost() {
         {shown?.kind === 'ingredients' && <IngredientsSheet />}
         {shown?.kind === 'ingredient' && <IngredientSheet key={shown.key} ingKey={shown.key} />}
         {shown?.kind === 'account' && <AccountSheet />}
+        {shown?.kind === 'generate' && <GenerateSheet />}
       </div>
     </div>
   );

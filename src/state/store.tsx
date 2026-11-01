@@ -15,9 +15,11 @@ import {
   options,
   randomPick,
   recipeTitle,
+  runOf,
   sanitizeIngredients,
   sanitizePicks,
   sanitizeRecipe,
+  sanitizeVariety,
   shuffle,
   spellLikeList,
   slotLabel,
@@ -47,6 +49,7 @@ function load(): Data {
       picks: sanitizePicks(saved.picks),
       extra: Array.isArray(saved.extra) ? saved.extra.flatMap((r) => sanitizeRecipe(r) ?? []) : [],
       ingredients: sanitizeIngredients(saved.ingredients),
+      variety: Array.isArray(saved.variety) ? [sanitizeVariety(saved.variety[0]), sanitizeVariety(saved.variety[1])] : fresh.variety,
       // A cache from before this version (or never synced) starts over with the server.
       sync: saved.sync?.linked === true ? saved.sync : fresh.sync,
     };
@@ -216,7 +219,13 @@ function useStoreValue() {
     toast,
     toggleTheme: () => setData((d) => ({ ...d, themePref: dark ? 'light' : 'dark' })),
 
-    generate: () => {
+    /**
+     * Fills the week with `variety[k]` different recipes for lunch (k = 0) and dinner (k = 1).
+     * A recipe used several times is on consecutive days, with the same variant: cooked once,
+     * eaten for a few days. Dinner prefers recipes that aren't already at lunch.
+     */
+    generate: (variety: [number, number]) => {
+      setSheet(null);
       if (!recipes.length) {
         toast('Add some recipes first');
         return;
@@ -226,18 +235,17 @@ function useStoreValue() {
       const picks: Picks = {};
       for (const k of [0, 1]) {
         const pool = shuffle(recipes.filter((r) => fitsSlot(r, k)));
-        for (let d = 0; d < 7; d++) {
-          const r = pool.find((x) => !used.has(x.id)) ?? pool[d % pool.length];
-          if (r) {
-            plan[d * 2 + k] = r.id;
-            const pick = randomPick(r);
-            if (pick.length) picks[d * 2 + k] = pick;
-            used.add(r.id);
-          }
+        const chosen = pool.filter((r) => !used.has(r.id)).concat(pool.filter((r) => used.has(r.id))).slice(0, sanitizeVariety(variety[k]));
+        const runPicks = chosen.map(randomPick);
+        for (let d = 0; d < 7 && chosen.length; d++) {
+          const run = runOf(d, chosen.length);
+          plan[d * 2 + k] = chosen[run].id;
+          if (runPicks[run].length) picks[d * 2 + k] = runPicks[run];
         }
+        chosen.forEach((r) => used.add(r.id));
       }
       // A new week starts a new shopping list: nothing bought or removed yet.
-      setData((d) => ({ ...d, plan, picks, removed: {}, checked: {} }));
+      setData((d) => ({ ...d, plan, picks, variety, removed: {}, checked: {} }));
       toast(`Week generated · ${plan.filter(Boolean).length} meals`);
     },
     clearWeek: () => setData((d) => ({ ...d, plan: emptyPlan(), picks: {}, removed: {}, checked: {} })),

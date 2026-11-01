@@ -171,7 +171,7 @@ export function useCloud(data: Data, setData: Dispatch<SetStateAction<Data>>) {
       setAccount(session ? { id: session.user.id, email: session.user.email ?? '' } : null);
       setAuthChecked(true);
       // Signed out (by hand, or the account was removed): this device forgets the shared data.
-      if (event === 'SIGNED_OUT') setData((d) => ({ ...emptyData(), themePref: d.themePref }));
+      if (event === 'SIGNED_OUT') setData((d) => ({ ...emptyData(), themePref: d.themePref, variety: d.variety }));
     });
     return () => sub.subscription.unsubscribe();
   }, [setData]);

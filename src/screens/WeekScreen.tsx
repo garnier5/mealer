@@ -5,7 +5,7 @@ import { useStore } from '@/state/store';
 import { c } from '@/theme/theme';
 
 export function WeekScreen() {
-  const { dark, data, byId, week, cloud, toggleTheme, clearWeek, generate, openSheet, ask } = useStore();
+  const { dark, data, byId, week, cloud, toggleTheme, clearWeek, openSheet, ask } = useStore();
   const online = cloud.status === 'synced' || cloud.status === 'syncing';
   const planned = data.plan.filter((id) => id && byId[id]).length;
 
@@ -52,7 +52,7 @@ export function WeekScreen() {
         <ProgressBar pct={Math.round((planned / SLOT_COUNT) * 100)} />
       </div>
 
-      <Button label="Generate a random week" icon="dice" height={54} onClick={generate} style={{ borderRadius: 18 }} />
+      <Button label="Generate a random week" icon="dice" height={54} onClick={() => openSheet({ kind: 'generate' })} style={{ borderRadius: 18 }} />
 
       <div className="col" style={{ gap: 6 }}>
         <div className="week-row">
