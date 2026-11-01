@@ -97,7 +97,7 @@ export function AddRecipeSheet({ id }: { id?: string }) {
         desc: desc.trim(),
         moment,
         icon,
-        tint: icon === editing.icon ? editing.tint : iconTint(icon),
+        tint: iconTint(icon),
         // Keep quantities of ingredients that are still there.
         ing: ings.map((g) => {
           const old = editing.ing.find(([n]) => n === g[0]);

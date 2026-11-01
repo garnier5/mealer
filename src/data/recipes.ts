@@ -1,15 +1,18 @@
 import type { IconKey, TintKey } from '@/types';
 
-/** [icon, label, tint, JSON alias] */
+/**
+ * [icon, label, tint, JSON alias]. Each icon has its own tint, so recipes tell apart at a glance.
+ * The first one is the default, also for an unknown icon (the former "plate" and "eggs" among them).
+ */
 export const RECIPE_ICONS: [IconKey, string, TintKey, string][] = [
-  ['fork', 'Plate', 'ocre', 'plate'],
-  ['bowl', 'Bowl', 'terra', 'bowl'],
+  ['fork', 'Chef', 'iris', 'chef'],
+  ['bowl', 'Bowl', 'teal', 'bowl'],
   ['tart', 'Tart', 'plum', 'tart'],
   ['leaf', 'Salad', 'sage', 'salad'],
   ['meat', 'Meat', 'terra', 'meat'],
   ['fish', 'Fish', 'blue', 'fish'],
-  ['egg', 'Eggs', 'ocre', 'eggs'],
   ['toast', 'Toast', 'ocre', 'toast'],
+  ['cake', 'Cake', 'rose', 'cake'],
 ];
 
 /**

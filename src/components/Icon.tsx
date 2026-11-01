@@ -1,8 +1,10 @@
 import {
   BookOpen,
+  Cake,
   Calendar,
   CalendarPlus,
   Check,
+  ChefHat,
   ChevronDown,
   ChevronUp,
   CircleAlert,
@@ -14,7 +16,6 @@ import {
   Contrast,
   Dice5,
   Drumstick,
-  Egg,
   Fish,
   Leaf,
   Moon,
@@ -62,15 +63,16 @@ const GLYPHS = {
   cloudOff: CloudOff,
   users: Users,
   share: Share,
+  utensils: Utensils,
   // recipe icons
-  fork: Utensils,
+  fork: ChefHat,
   bowl: Soup,
   tart: Pizza,
   leaf: Leaf,
   meat: Drumstick,
   fish: Fish,
-  egg: Egg,
   toast: Sandwich,
+  cake: Cake,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof GLYPHS;

@@ -1,8 +1,9 @@
 export type Moment = 'lunch' | 'dinner' | 'both';
 
-export type IconKey = 'fork' | 'bowl' | 'tart' | 'leaf' | 'meat' | 'fish' | 'egg' | 'toast';
+/** 'fork' is drawn as a chef's hat: the key dates from when it was a plate, and saved recipes still use it. */
+export type IconKey = 'fork' | 'bowl' | 'tart' | 'leaf' | 'meat' | 'fish' | 'toast' | 'cake';
 
-export type TintKey = 'ocre' | 'sage' | 'terra' | 'blue' | 'plum';
+export type TintKey = 'ocre' | 'sage' | 'terra' | 'blue' | 'plum' | 'teal' | 'rose' | 'iris';
 
 /** [name, quantity, unit, variants that can replace it (rice instead of pasta)] */
 export type Ingredient = [string, number, string, string[]?];

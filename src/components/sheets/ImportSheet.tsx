@@ -109,7 +109,7 @@ export function ImportSheet() {
       }>
       <p style={{ fontSize: 14, lineHeight: '20px', color: c.text2 }}>
         Copy recipes written as JSON, like the example, then tap Paste. Fields: <strong style={{ fontWeight: 800, color: c.text }}>ingredients</strong>,
-        title (optional), description, meal (lunch, dinner or both) and icon (plate, bowl, tart, salad, meat, fish, eggs, toast). An ingredient written as a
+        title (optional), description, meal (lunch, dinner or both) and icon (chef, bowl, tart, salad, meat, fish, toast, cake). An ingredient written as a
         list has variants: ["pasta", "rice"].
       </p>
       <div className="row" style={{ gap: 8 }}>

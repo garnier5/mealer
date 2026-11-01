@@ -55,7 +55,7 @@ export function PlanPickerSheet({ id }: { id: string }) {
                     color: fg,
                     opacity: ok ? undefined : 0.35,
                   }}>
-                  <Icon name={isThis ? 'check' : cur ? 'fork' : 'plus'} size={15} />
+                  <Icon name={isThis ? 'check' : cur ? 'utensils' : 'plus'} size={15} />
                   <span className="ellipsis" style={{ flex: 1, textAlign: 'left', fontSize: 12.5, fontWeight: 700 }}>
                     {isThis ? 'Planned here' : cur ? cur.short || curTitle : 'Free'}
                   </span>

@@ -186,7 +186,6 @@ export function makeRecipe(title: string, desc: string, ings: string[][], moment
 // ── Recipes from untrusted data ──
 
 const MOMENTS: Moment[] = ['lunch', 'dinner', 'both'];
-const TINTS: TintKey[] = ['ocre', 'sage', 'terra', 'blue', 'plum'];
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max).trim() : '');
 export const MAX_VARIANTS = 5;
 /** The server refuses entries over 50 000 bytes; one refused entry would hold back the whole sync. */
@@ -221,7 +220,8 @@ export function sanitizeRecipe(v: unknown, id?: string): Recipe | null {
     short: text(o.short, 100) || name,
     moment: MOMENTS.includes(o.moment as Moment) ? (o.moment as Moment) : 'both',
     icon,
-    tint: TINTS.includes(o.tint as TintKey) ? (o.tint as TintKey) : iconTint(icon),
+    // Always the icon's own: recipes saved before every icon had its own tint follow along.
+    tint: iconTint(icon),
     desc: text(o.desc, 2000),
     ing,
   };

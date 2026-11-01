@@ -27,8 +27,26 @@ export type Theme = typeof THEMES.light;
 
 /** [background, foreground] for recipe tiles. */
 export const TINTS: Record<'light' | 'dark', Record<TintKey, [string, string]>> = {
-  light: { ocre: ['#F3ECDF', '#86704A'], sage: ['#E6ECE4', '#5A7260'], terra: ['#F3E6E0', '#93604C'], blue: ['#E3EAEF', '#536C7C'], plum: ['#ECE6EC', '#755F72'] },
-  dark: { ocre: ['#352C1C', '#E0BC7C'], sage: ['#233027', '#A8CBAE'], terra: ['#3A2720', '#E8A283'], blue: ['#1E2D34', '#9CC0D1'], plum: ['#32262F', '#D2AECB'] },
+  light: {
+    ocre: ['#F3ECDF', '#86704A'],
+    sage: ['#E6ECE4', '#5A7260'],
+    terra: ['#F3E6E0', '#93604C'],
+    blue: ['#E3EAEF', '#536C7C'],
+    plum: ['#ECE6EC', '#755F72'],
+    teal: ['#E0EDEB', '#3F756F'],
+    rose: ['#F6E3EA', '#A04F6C'],
+    iris: ['#E6E7F5', '#585E9C'],
+  },
+  dark: {
+    ocre: ['#352C1C', '#E0BC7C'],
+    sage: ['#233027', '#A8CBAE'],
+    terra: ['#3A2720', '#E8A283'],
+    blue: ['#1E2D34', '#9CC0D1'],
+    plum: ['#32262F', '#D2AECB'],
+    teal: ['#1A302D', '#8FD0C6'],
+    rose: ['#3B2230', '#F0A2BF'],
+    iris: ['#24263D', '#AEB4EE'],
+  },
 };
 
 const kebab = (k: string) => k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
